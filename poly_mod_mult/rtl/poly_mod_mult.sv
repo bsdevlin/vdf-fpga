@@ -17,55 +17,46 @@
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-
-// test with 16 bit input, 2 words. 9 bits per coeffient to match DSP
-
 module poly_mod_mult #(
-  parameter IN_BITS   = 40,
-  parameter WORD_BITS = 8,   // should match DSP size
-  parameter NUM_WORDS = 4,
-  parameter REDUN_WORD_BITS = 1, // One redundant bit per word
-  parameter REDUN_WORDS = 1, // Require one redundant word for repeated multiplication
-  parameter I_WORD = NUM_WORDS + REDUN_WORDS,
-  parameter COEF_BITS = WORD_BITS + REDUN_WORD_BITS
+  parameter bit SQ_MODE = 1,            // Only square (on i_dat_a)
+  parameter int WORD_BITS = 8,          // Radix of each coeff.
+  parameter int NUM_WORDS = 4,          // Number of words
+  parameter int REDUN_WORD_BITS = 1,    // Redundant bits per word
+  parameter int I_WORD = NUM_WORDS + 1, // Require one redundant word for repeated multiplication
+  parameter int COEF_BITS = WORD_BITS + REDUN_WORD_BITS // This is size of DSP 
 ) (
   input i_clk,
   input i_rst,
-  input i_val,                                           // A pulse on this signal will start operating on inputs
-  input i_mode,                                          // 0 = mult, 1 = square
+  input i_val,                                           // A pulse on this signal will start operating on inputs                           
   input [I_WORD-1:0][COEF_BITS-1:0]          i_dat_a,    // One extra word for overflow - bits here must be padded (in redundant form)
   input [I_WORD-1:0][COEF_BITS-1:0]          i_dat_b,
   output logic [I_WORD*2-1:0][COEF_BITS-1:0] o_dat,
   output logic                               o_val
 );
 
-// if squaring we don't need to do all mults, can just 2* to get same result in adder tree
-// Internally we use 18x27 multipliers, input bits should be multipliers
-// Coeff is 8 bits
+// TODO need to figure formula for extra bits - how many bits we can remove via carry stage add
+localparam int ACCUM_EXTRA_BITS = SQ_MODE == 0 ? $clog2(I_WORD**2) : $clog2((I_WORD**2 + I_WORD)/2);
 
-// The log(log of the bits / cooef) will determine how many extra bits we need
-localparam int SLICE = 2*(I_WORD*COEF_BITS)/45;
-localparam ACCUM_EXTRA_BITS = $clog2(2*SLICE);
 localparam PIPES = 5;
 
-logic [I_WORD-1:0][COEF_BITS-1:0]    dat_a; // [I_WORD-1:0][COEF_BITS-1:0]
-logic [I_WORD-1:0][COEF_BITS-1:0]    dat_b;
-//logic [2*SLICE-1:0][SLICE*45:0] mul_out;
-logic [2*SLICE-1:0][2*I_WORD-1:0][WORD_BITS-1:0] mul_out, mul_out_comb;
+ // Convert this to a flat array for multiplication plus any padding
+logic [I_WORD*COEF_BITS-1:0] dat_a, dat_b;
+logic [COEF_BITS*2-1:0] mul_res;
+logic [I_WORD**2-1:0][COEF_BITS*I_WORD*2-1:0] mul_out, mul_out_comb;
 
+// Convert back to our polynomial representation
 logic [2*I_WORD-1:0][WORD_BITS+ACCUM_EXTRA_BITS-1:0] accum_out, accum_out_comb;
  
-logic [I_WORD*2:0][COEF_BITS-1:0] overflow_out, overflow_out_comb;  // + 1 here from I_WORD
-
+logic [I_WORD*2:0][COEF_BITS-1:0] overflow_out, overflow_out_comb;
 
 logic [PIPES:0] val;
-logic mode;
 
 always_comb begin
   o_val = val[PIPES];
   o_dat = overflow_out;
 end
 
+// Registered processes
 always_ff @ (posedge i_clk) begin
   if (i_rst) begin
     val <= 0;
@@ -74,67 +65,78 @@ always_ff @ (posedge i_clk) begin
     mul_out <= 0;
     accum_out <= 0;
     overflow_out <= 0;
-    mode <= 0;
   end else begin
     val <= {val, i_val};
-    dat_a <= i_dat_a;
-    dat_b <= i_dat_b;
-    mode <= i_mode;
-    
+    dat_a[I_WORD*COEF_BITS-1:0] <= i_dat_a;
+    if (SQ_MODE == 0) begin
+      dat_b[I_WORD*COEF_BITS-1:0] <= i_dat_b;
+    end
     mul_out <= mul_out_comb;
     accum_out <= accum_out_comb;
     overflow_out <= overflow_out_comb;
   end
 end
 
-
-
 // Stage 1 do multiplications
 always_comb begin
-  // First we do all the multiplications required, fill the mul_out grid (2*(I_WORD*I_BITS)/45)^2
-  // Alternate between 18 and 27 bits
-  // TODO squaring we can skip diagonal elements
+  // First we do all the multiplications required
+  // Squaring we can skip elements above diagonal and just shift elements below diagonal to double them
   mul_out_comb = 0;
-  for (int i = 0; i < SLICE; i++) begin
-    for (int j = 0; j < SLICE; j++) begin
-      case({j%2, i%2})
-        2'b00: mul_out_comb[i*SLICE+j][i*5 + j*5 +: 5] <= mul0(dat_a[i*3 +: 2], dat_b[j*3 +: 3]);
-        2'b01: mul_out_comb[i*SLICE+j][(i-1)*5 + 2 + j*5 +: 5] <= mul1(dat_a[(i-1)*5 + 2 +: 3], dat_b[j*5 +: 2]);
-        2'b10: mul_out_comb[i*SLICE+j][i*5 + (j-1)*5 + 3 +: 5] <= mul0(dat_a[i*5 +: 2], dat_b[ (j-1)*5 + 3 +: 3]);
-        2'b11: mul_out_comb[i*SLICE+j][(i-1)*5 + 2 + (j-1)*5 + 3 +: 5] <= mul1(dat_a[(i-1)*5 + 2 +: 3], dat_b[ (j-1)*5 + 3 +: 2]);
-      endcase
+  for (int i = 0; i < I_WORD; i++) begin
+    for (int j = 0; j < I_WORD; j++) begin
+      if (!(SQ_MODE == 1 && i < j)) begin
+        // For squares - diagonal elements stay the same but below the diagonal get shifted 1 bit (doubled) during accumulator
+        mul_res = mul(dat_a[i*COEF_BITS +: COEF_BITS], dat_a[j*COEF_BITS +: COEF_BITS]);
+        // We need to split the mul_result up over the words (skip the redundant bits), and shift into the right locations
+        mul_out_comb[i*I_WORD+j] = mul_shift(mul_res, i, j);
+      end
     end
   end
 end
 
 // Stage 2
-// For each column we accumulate the multiplier results, each 8 bits
-// Each column is now a coeffient - 9 bits
+// For each column we accumulate the multiplier results, each COEF_BITS bits
+// Each column is now COEF_BITS + ACCUM_EXTRA_BITS wide
 always_comb begin
   accum_out_comb = 0;
   for (int i = 0; i < I_WORD*2; i++)
-    for (int j = 0; j < SLICE*2; j++)
-      accum_out_comb[i] += mul_out[j][i];
-  
+    for (int j = 0; j < I_WORD; j++)
+      for (int k = 0; k < I_WORD; k++)
+      // Here we check for elements we need to double if in SQ_MODE
+      if (SQ_MODE == 1 && j > k) begin
+        accum_out_comb[i] += 2*mul_out[j*I_WORD+k][i*COEF_BITS +: WORD_BITS];
+      end else begin
+        accum_out_comb[i] += mul_out[j*I_WORD+k][i*COEF_BITS +: WORD_BITS];
+      end
 end
 
 // Stage 3 now we add any overflow bits from coeffient behind us
 always_comb begin
   overflow_out_comb = 0;
-  for (int i = 0; i < I_WORD*2; i++)
-    overflow_out_comb[i] = accum_out[i] + (i > 0 ? accum_out[i-1][COEF_BITS +: (WORD_BITS + ACCUM_EXTRA_BITS - COEF_BITS)] : 0);
-    
-  overflow_out_comb[I_WORD*2] = accum_out[I_WORD*2-1][COEF_BITS +: (WORD_BITS + ACCUM_EXTRA_BITS - COEF_BITS)]; 
+  for (int i = 0; i < I_WORD*2; i++) begin
+    overflow_out_comb[i] = accum_out[i][COEF_BITS-1:0] + (i > 0 ? accum_out[i-1][WORD_BITS + ACCUM_EXTRA_BITS - 1 : COEF_BITS] << 1 : 0);
+  end  
+  overflow_out_comb[I_WORD*2] = accum_out[I_WORD*2-1][WORD_BITS + ACCUM_EXTRA_BITS - 1 : COEF_BITS]; 
 end
 
-function [44:0] mul0(input [2:0][7:0] a, input [3:0][7:0] b);
-  $display("mul0 %x and %x", a, b);
-  mul0 = a*b;
+// Stage 4 is the reduction stage
+
+
+
+
+function [COEF_BITS*2-1:0] mul(input [COEF_BITS-1:0] a, b);
+  mul = a*b;
 endfunction
 
-function [44:0] mul1(input [3:0][7:0] a, input [2:0][7:0] b);
-  $display("mul1 %x and %x", a, b);
-  mul1 = a*b;
+function [COEF_BITS*I_WORD*2-1:0] mul_shift(input [COEF_BITS*2-1:0] a, input int i, j);
+  localparam NUM_SHIFTS = (COEF_BITS*2 + WORD_BITS - 1)/WORD_BITS;
+  logic [NUM_SHIFTS*WORD_BITS-1:0] a_;
+  mul_shift = 0;
+  a_ = a;
+  for (int k = 0; k < NUM_SHIFTS; k++) begin
+    mul_shift[(i+j)*COEF_BITS + k*COEF_BITS +: WORD_BITS] = a_[WORD_BITS*k +: WORD_BITS];
+  end
 endfunction
+
 
 endmodule
