@@ -226,12 +226,14 @@ endfunction
 // This function splits the mutliplation result up correctly accross coefficients
 function [COEF_BITS*I_WORD*2-1:0] mul_shift(input [COEF_BITS*2-1:0] a, input int i, j);
   localparam NUM_SHIFTS = (COEF_BITS*2 + WORD_BITS - 1)/WORD_BITS;
+  logic [COEF_BITS*(I_WORD+1)*2:0] mul_shift_;
   logic [NUM_SHIFTS*WORD_BITS-1:0] a_;
-  mul_shift = 0;
+  mul_shift_ = 0;
   a_ = a;
   for (int k = 0; k < NUM_SHIFTS; k++) begin
-    mul_shift[(i+j)*COEF_BITS + k*COEF_BITS +: WORD_BITS] = a_[WORD_BITS*k +: WORD_BITS];
+    mul_shift_[(i+j)*COEF_BITS + k*COEF_BITS +: WORD_BITS] = a_[WORD_BITS*k +: WORD_BITS];
   end
+  mul_shift = mul_shift_;
 endfunction
 
 endmodule
