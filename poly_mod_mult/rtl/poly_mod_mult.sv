@@ -97,6 +97,7 @@ generate
             $fdisplay (fd, "%x", value_mod);
           end
         end
+        $fclose(fd);
         $readmemh($sformatf("reduction_lut_%0d.%0d.mem", g_i, g_j), reduction_ram.ram);
       end
       always_comb reduction_ram_d[g_i][g_j] = reduction_ram.ram[reduction_ram_a[g_i][g_j]];

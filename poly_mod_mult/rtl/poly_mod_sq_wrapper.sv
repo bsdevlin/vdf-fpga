@@ -19,8 +19,8 @@
  */
 module poly_mod_sq_wrapper #(
   parameter int                       WORD_BITS = 16,
-  parameter int                       NUM_WORDS = 8,
-  parameter [WORD_BITS*NUM_WORDS-1:0] MODULUS = (1 << 127) - 10,
+  parameter int                       NUM_WORDS = 16,
+  parameter [WORD_BITS*NUM_WORDS-1:0] MODULUS = (1 << 255) - 10,
   parameter int                       REDUCTION_BITS = 9,
   parameter int                       REDUN_WORD_BITS = 1,
   parameter int                       I_WORD = NUM_WORDS + 1,

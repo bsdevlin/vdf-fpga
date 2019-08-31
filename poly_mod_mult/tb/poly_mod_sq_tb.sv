@@ -21,11 +21,13 @@ module poly_mod_sq_tb ();
 localparam CLK_PERIOD = 100;
 localparam WORD_BITS = 16;
 localparam REDUN_WORD_BITS = 1;
-localparam NUM_WORDS = 8;
+localparam NUM_WORDS = 16;
 localparam I_WORD = NUM_WORDS + 1;
 localparam COEF_BITS = WORD_BITS + REDUN_WORD_BITS;
 localparam REDUCTION_BITS = 9;
-localparam [WORD_BITS*NUM_WORDS-1:0] MODULUS = (1 << 127) - 10;
+localparam [WORD_BITS*NUM_WORDS-1:0] MODULUS = (1 << 255) - 10;
+// This is the actual 1024 bit modulus
+//1024'hb0ad4555c1ee34c8cb0577d7105a475171760330d577a0777ddcb955b302ad0803487d78ca267e8e9f5e3f46e35e10ca641a27e622b2d04bb09f3f5e3ad274b1744f34aeaf90fd45129a02a298dbc430f404f9988c862d10b58c91faba2aa2922f079229b0c8f88d86bfe6def7d026294ed9dee2504b5d30466f7b0488e2666b;
 
 logic clk, rst;
 
@@ -70,7 +72,7 @@ begin
 
   in_a = 2;
   i_dat_a = int_to_poly(in_a);
-  for (int i = 0; i < 1000; i++) begin: LOOP_TEST
+  for (int i = 0; i < 100000; i++) begin: LOOP_TEST
 
     out_exp = (in_a**2) % MODULUS;
 
