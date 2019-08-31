@@ -30,7 +30,8 @@ module poly_mod_mult #(
   parameter int                       REDUN_WORD_BITS = 1,    // Redundant bits per word
   // Below here the parameters should not be changed
   parameter int                       I_WORD = NUM_WORDS + 1, // Require one redundant word for repeated multiplication
-  parameter int                       COEF_BITS = WORD_BITS + REDUN_WORD_BITS // This is size of DSP 
+  parameter int                       COEF_BITS = WORD_BITS + REDUN_WORD_BITS, // This is size of DSP
+  parameter bit                       SIMULATION = 0
 ) (
   input i_clk,
   input i_rst,
@@ -86,7 +87,7 @@ generate
         logic [COEF_BITS*I_WORD*2-1:0] value;
         logic [NUM_WORDS*WORD_BITS-1:0] value_mod;
         fd = $fopen ($sformatf("reduction_lut_%0d.%0d.mem", g_i, g_j), "r");
-        if (!fd) begin
+        if (!fd || SIMULATION == 0) begin
           $display("INFO: Lut reduction file (reduction_lut_%0d.%0d.mem) does not exist, creating...", g_i, g_j);
           fd = $fopen ($sformatf("reduction_lut_%0d.%0d.mem", g_i, g_j), "w");
           if (!fd)
@@ -95,10 +96,13 @@ generate
             value = (k << (g_j*REDUCTION_BITS + (g_i+NUM_WORDS)*WORD_BITS));
             value_mod = value %  MODULUS;
             $fdisplay (fd, "%x", value_mod);
+            if (SIMULATION == 0)
+              reduction_ram.ram[k] = value_mod;
           end
         end
         $fclose(fd);
-        $readmemh($sformatf("reduction_lut_%0d.%0d.mem", g_i, g_j), reduction_ram.ram);
+        if (SIMULATION == 1)
+          $readmemh($sformatf("reduction_lut_%0d.%0d.mem", g_i, g_j), reduction_ram.ram);
       end
       always_comb reduction_ram_d[g_i][g_j] = reduction_ram.ram[reduction_ram_a[g_i][g_j]];
     end

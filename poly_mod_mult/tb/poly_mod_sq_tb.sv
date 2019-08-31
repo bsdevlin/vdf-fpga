@@ -53,8 +53,8 @@ poly_mod_sq_wrapper #(
   .I_WORD          ( I_WORD          ),
   .COEF_BITS       ( COEF_BITS       ),
   .MODULUS         ( MODULUS         ),
-  .REDUCTION_BITS  ( REDUCTION_BITS  )
-
+  .REDUCTION_BITS  ( REDUCTION_BITS  ),
+  .SIMULATION      ( 1               )
 )
 poly_mod_mult_i (
   .i_clk ( clk     ),

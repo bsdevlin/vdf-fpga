@@ -24,7 +24,8 @@ module poly_mod_sq_wrapper #(
   parameter int                       REDUCTION_BITS = 9,
   parameter int                       REDUN_WORD_BITS = 1,
   parameter int                       I_WORD = NUM_WORDS + 1,
-  parameter int                       COEF_BITS = WORD_BITS + REDUN_WORD_BITS
+  parameter int                       COEF_BITS = WORD_BITS + REDUN_WORD_BITS,
+  parameter bit                       SIMULATION = 0
 ) (
   input i_clk,
   input i_rst,
@@ -55,7 +56,8 @@ poly_mod_mult #(
   .REDUCTION_BITS    ( REDUCTION_BITS  ),
   .REDUN_WORD_BITS   ( REDUN_WORD_BITS ),
   .I_WORD            ( I_WORD          ),
-  .COEF_BITS         ( COEF_BITS       )
+  .COEF_BITS         ( COEF_BITS       ),
+  .SIMULATION        ( SIMULATION      )
 )
 poly_mod_mult_i (
   .i_clk   ( i_clk ),
