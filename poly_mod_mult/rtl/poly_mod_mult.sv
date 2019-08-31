@@ -20,6 +20,7 @@
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
+
 module poly_mod_mult #(
   parameter bit                       SQ_MODE = 1,            // Only square (on i_dat_a)
   parameter int                       WORD_BITS = 8,          // Radix of each coeff.
@@ -66,56 +67,42 @@ typedef struct {
   logic [NUM_WORDS*WORD_BITS-1:0] ram [(1 << REDUCTION_BITS)-1:0];
 } reduction_ram_t;
 
-// An array of our RAM for reduction
-reduction_ram_t reduction_ram [I_WORD*2-NUM_WORDS:0][REDUCTION_STAGES-1:0];
 // Address drivers for RAM
 logic [REDUCTION_BITS-1:0] reduction_ram_a [I_WORD*2-NUM_WORDS:0][REDUCTION_STAGES-1:0];
 // Data output from RAM
 logic [I_WORD*2-NUM_WORDS:0][REDUCTION_STAGES-1:0][NUM_WORDS*WORD_BITS-1:0] reduction_ram_d;
 
+// Declear RAM here and create .mem files
 genvar g_i, g_j;
 generate
-  for (g_i = 0; g_i <= I_WORD*2-NUM_WORDS; g_i++)
-    for (g_j = 0; g_j < REDUCTION_STAGES; g_j++)
-        always_comb
-          reduction_ram_d[g_i][g_j] = reduction_ram[g_i][g_j].ram[reduction_ram_a[g_i][g_j]];
-endgenerate
-
-initial begin
-  // First check if it exists and if it dosen't, create it
-  int fd;
-
-  logic [COEF_BITS*I_WORD*2-1:0] value;
-  logic [NUM_WORDS*WORD_BITS-1:0] value_mod;
-  
-  // Create files if needed
-  for (int i = 0; i <= I_WORD*2-NUM_WORDS; i++) begin
-    for (int j = 0; j < REDUCTION_STAGES; j++) begin
-      fd = $fopen ($sformatf("reduction_lut_%0d.%0d.mem", i,j), "r");
-      if (!fd) begin
-        $display("INFO: Lut reduction file (reduction_lut_%0d.%0d.mem) does not exist, creating...", i, j);
-        fd = $fopen ($sformatf("reduction_lut_%0d.%0d.mem", i,j), "w");
-        if (!fd)
-          $fatal(1, "ERROR: Could not open file for writing!");
-        for (int k = 0; k < (1 << REDUCTION_BITS); k++) begin
-          value = (k << (j*REDUCTION_BITS + (i+NUM_WORDS)*WORD_BITS));
-          value_mod = value %  MODULUS;
-          $fdisplay (fd, "%x", value_mod);
+  for (g_i = 0; g_i <= I_WORD*2-NUM_WORDS; g_i++) begin: GEN_I
+    for (g_j = 0; g_j < REDUCTION_STAGES; g_j++) begin: GEN_J
+      // We create our memories in here and assign them to the external array
+      reduction_ram_t reduction_ram;
+      
+      // Check if file exists, otherwise create it
+      initial begin
+        int fd;
+        logic [COEF_BITS*I_WORD*2-1:0] value;
+        logic [NUM_WORDS*WORD_BITS-1:0] value_mod;
+        fd = $fopen ($sformatf("reduction_lut_%0d.%0d.mem", g_i, g_j), "r");
+        if (!fd) begin
+          $display("INFO: Lut reduction file (reduction_lut_%0d.%0d.mem) does not exist, creating...", g_i, g_j);
+          fd = $fopen ($sformatf("reduction_lut_%0d.%0d.mem", g_i, g_j), "w");
+          if (!fd)
+            $fatal(1, "ERROR: Could not open file for writing!");
+          for (int k = 0; k < (1 << REDUCTION_BITS); k++) begin
+            value = (k << (g_j*REDUCTION_BITS + (g_i+NUM_WORDS)*WORD_BITS));
+            value_mod = value %  MODULUS;
+            $fdisplay (fd, "%x", value_mod);
+          end
         end
+        $readmemh($sformatf("reduction_lut_%0d.%0d.mem", g_i, g_j), reduction_ram.ram);
       end
-      $fclose(fd);
+      always_comb reduction_ram_d[g_i][g_j] = reduction_ram.ram[reduction_ram_a[g_i][g_j]];
     end
   end
-
-  // Load memory
-  for (int i = 0; i <= I_WORD*2-NUM_WORDS; i++)
-    for (int j = 0; j < REDUCTION_STAGES; j++) begin
-      fd = $fopen ($sformatf("reduction_lut_%0d.%0d.mem", i,j), "r");
-      for (int k = 0; k < (1 << REDUCTION_BITS); k++)
-        $fscanf(fd, "%x\n", reduction_ram[i][j].ram[k]);
-      $fclose(fd);
-    end
-end
+endgenerate
 
 always_comb begin
   o_val = val[PIPES];
