@@ -24,7 +24,7 @@ localparam REDUN_WORD_BITS = 1;
 localparam NUM_WORDS = 8;
 localparam I_WORD = NUM_WORDS + 1;
 localparam COEF_BITS = WORD_BITS + REDUN_WORD_BITS;
-localparam REDUCTION_BITS = COEF_BITS;
+localparam REDUCTION_BITS = 9;
 localparam [WORD_BITS*NUM_WORDS-1:0] MODULUS = (1 << 127) - 10;
 
 logic clk, rst;
