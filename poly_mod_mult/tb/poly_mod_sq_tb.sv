@@ -33,7 +33,7 @@ logic [I_WORD-1:0][COEF_BITS-1:0] i_dat_a;
 logic [I_WORD*COEF_BITS-1:0] in_a;
 logic [2*I_WORD*COEF_BITS-1:0] in_a2;
 logic [I_WORD-1:0][COEF_BITS-1:0] o_dat;
-logic o_val, start;
+logic o_val, start, reduce_only;
 
 initial begin
   rst = 0;
@@ -56,12 +56,13 @@ poly_mod_sq_wrapper #(
   .SIMULATION      ( 1               )
 )
 poly_mod_mult_i (
-  .i_clk ( clk     ),
-  .i_rst ( rst     ),
-  .i_val ( start   ),
-  .i_dat ( i_dat_a ),
-  .o_dat ( o_dat   ),
-  .o_val ( o_val   )
+  .i_clk  			 ( clk     		 ),
+  .i_rst  			 ( rst     		 ),
+  .i_val         ( start       ),
+  .i_reduce_only ( reduce_only ),
+  .i_dat     	   ( i_dat_a     ),
+  .o_dat         ( o_dat       ),
+  .o_val         ( o_val       )
 );
 
 task test_0();
@@ -127,6 +128,7 @@ endfunction
 initial begin
   start = 0;
   i_dat_a = 0;
+  reduce_only = 0;
 
   #(40*CLK_PERIOD);
 

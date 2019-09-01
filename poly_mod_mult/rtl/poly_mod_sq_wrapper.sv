@@ -30,6 +30,7 @@ module poly_mod_sq_wrapper #(
   input i_clk,
   input i_rst,
   input i_val,
+  input i_reduce_only,
   input [I_WORD-1:0][COEF_BITS-1:0]        i_dat,
   output logic [I_WORD-1:0][COEF_BITS-1:0] o_dat,
   output logic                             o_val
@@ -60,13 +61,14 @@ poly_mod_mult #(
   .SIMULATION        ( SIMULATION      )
 )
 poly_mod_mult_i (
-  .i_clk   ( i_clk ),
-  .i_rst   ( i_rst ),
-  .i_val   ( val_in[PIPES-1] ),
-  .i_dat_a ( dat_in[PIPES-1] ),
-  .i_dat_b ( '0              ),
-  .o_dat   ( dat_out[0]      ),
-  .o_val   ( val_out[0]      )
+  .i_clk         ( i_clk 					 ),
+  .i_rst         ( i_rst 					 ),
+  .i_val         ( val_in[PIPES-1] ),
+  .i_reduce_only ( i_reduce_only   ),
+  .i_dat_a 			 ( dat_in[PIPES-1] ),
+  .i_dat_b 			 ( '0              ),
+  .o_dat  			 ( dat_out[0]      ),
+  .o_val  			 ( val_out[0]      )
 );
 
 endmodule

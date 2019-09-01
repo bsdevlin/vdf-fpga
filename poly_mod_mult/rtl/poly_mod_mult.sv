@@ -35,7 +35,8 @@ module poly_mod_mult #(
 ) (
   input i_clk,
   input i_rst,
-  input i_val,                                         // A pulse on this signal will start operating on inputs                           
+  input i_val,                                         // A pulse on this signal will start operating on inputs        
+  input i_reduce_only,                                 // This takes the input and only does a reduction operation
   input [I_WORD-1:0][COEF_BITS-1:0]        i_dat_a,    // One extra word for overflow - bits here must be in redundant form
   input [I_WORD-1:0][COEF_BITS-1:0]        i_dat_b,
   output logic [I_WORD-1:0][COEF_BITS-1:0] o_dat,
@@ -57,7 +58,7 @@ logic [I_WORD**2-1:0][COEF_BITS*I_WORD*2-1:0] mul_out, mul_out_comb;
 
 // Convert back to our polynomial representation
 logic [I_WORD*2-1:0][WORD_BITS+ACCUM_EXTRA_BITS-1:0] accum_out, accum_out_comb;
-logic [I_WORD*2:0][COEF_BITS-1:0] overflow_out, overflow_out_comb;
+logic [I_WORD*2:0][COEF_BITS-1:0] overflow_out, overflow_out_comb, overflow_out_comb_skip;
 
 // These are for the reduction step, could be muxed onto those above
 logic [NUM_WORDS-1:0][WORD_BITS+REDUCTION_EXTRA_BITS-1:0] accum_r_out, accum_r_out_comb;
@@ -112,6 +113,7 @@ endgenerate
 always_comb begin
   o_val = val[PIPES];
   o_dat = overflow_r_out;
+  overflow_out_comb_skip = (i_reduce_only && i_val) ? i_dat_a : overflow_out_comb;
 end
 
 // Registered processes
@@ -128,21 +130,25 @@ always_ff @ (posedge i_clk) begin
         reduction_ram_a[i][j] <= 0;
   end else begin
     val <= {val, i_val};
+    if (i_reduce_only && i_val) begin
+      val <= 0;
+      val[3] <= 1;
+    end
     dat_a[I_WORD*COEF_BITS-1:0] <= i_dat_a;
     if (SQ_MODE == 0) begin
       dat_b[I_WORD*COEF_BITS-1:0] <= i_dat_b;
     end
     mul_out <= mul_out_comb;
     accum_out <= accum_out_comb;
-    overflow_out <= overflow_out_comb;
+    overflow_out <= overflow_out_comb_skip;
     accum_r_out <= accum_r_out_comb;
     overflow_r_out <= overflow_r_out_comb;
     for (int i = 0; i <= I_WORD*2-NUM_WORDS; i++)
       for (int j = 0; j < REDUCTION_STAGES; j++)
         if (j == REDUCTION_STAGES-1)
-          reduction_ram_a[i][j] <= overflow_out_comb[i+NUM_WORDS][COEF_BITS-1 : REDUCTION_BITS*(REDUCTION_STAGES-1)];
+          reduction_ram_a[i][j] <= overflow_out_comb_skip[i+NUM_WORDS][COEF_BITS-1 : REDUCTION_BITS*(REDUCTION_STAGES-1)];
         else
-          reduction_ram_a[i][j] <= overflow_out_comb[i+NUM_WORDS][REDUCTION_BITS*j +: REDUCTION_BITS];
+          reduction_ram_a[i][j] <= overflow_out_comb_skip[i+NUM_WORDS][REDUCTION_BITS*j +: REDUCTION_BITS];
   end
 end
 
