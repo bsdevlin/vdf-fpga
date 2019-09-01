@@ -43,7 +43,7 @@ module poly_mod_mult #(
 );
 
 
-localparam int ACCUM_EXTRA_BITS = SQ_MODE == 0 ? $clog2(I_WORD**2) : $clog2((I_WORD**2 + I_WORD)/2);
+localparam int ACCUM_EXTRA_BITS = (SQ_MODE == 0 ? $clog2(I_WORD**2) : $clog2((I_WORD**2 + I_WORD)/2));
 localparam int REDUCTION_STAGES = (COEF_BITS + REDUCTION_BITS - 1) / REDUCTION_BITS;
 localparam int REDUCTION_EXTRA_BITS = $clog2(REDUCTION_STAGES*(I_WORD*2-NUM_WORDS));
 localparam PIPES = 5;

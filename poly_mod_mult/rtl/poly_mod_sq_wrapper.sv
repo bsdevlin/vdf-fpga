@@ -18,10 +18,10 @@
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 module poly_mod_sq_wrapper #(
-  parameter int                       WORD_BITS = 16,
-  parameter int                       NUM_WORDS = 16,
-  parameter [WORD_BITS*NUM_WORDS-1:0] MODULUS = (1 << 255) - 10,
-  parameter int                       REDUCTION_BITS = 9,
+  parameter int                       WORD_BITS = 32,
+  parameter int                       NUM_WORDS = 32,
+  parameter [WORD_BITS*NUM_WORDS-1:0] MODULUS = 1024'd124066695684124741398798927404814432744698427125735684128131855064976895337309138910015071214657674309443149407457493434579063840841220334555160125016331040933690674569571217337630239191517205721310197608387239846364360850220896772964978569683229449266819903414117058030106528073928633017118689826625594484331,
+  parameter int                       REDUCTION_BITS = 8,
   parameter int                       REDUN_WORD_BITS = 1,
   parameter int                       I_WORD = NUM_WORDS + 1,
   parameter int                       COEF_BITS = WORD_BITS + REDUN_WORD_BITS,

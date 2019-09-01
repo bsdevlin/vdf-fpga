@@ -19,20 +19,19 @@
 module poly_mod_sq_tb ();
 
 localparam CLK_PERIOD = 100;
-localparam WORD_BITS = 16;
+localparam WORD_BITS = 32;
 localparam REDUN_WORD_BITS = 1;
-localparam NUM_WORDS = 16;
+localparam NUM_WORDS = 32;
 localparam I_WORD = NUM_WORDS + 1;
 localparam COEF_BITS = WORD_BITS + REDUN_WORD_BITS;
-localparam REDUCTION_BITS = 9;
-localparam [WORD_BITS*NUM_WORDS-1:0] MODULUS = (1 << 255) - 10;
-// This is the actual 1024 bit modulus
-//1024'hb0ad4555c1ee34c8cb0577d7105a475171760330d577a0777ddcb955b302ad0803487d78ca267e8e9f5e3f46e35e10ca641a27e622b2d04bb09f3f5e3ad274b1744f34aeaf90fd45129a02a298dbc430f404f9988c862d10b58c91faba2aa2922f079229b0c8f88d86bfe6def7d026294ed9dee2504b5d30466f7b0488e2666b;
+localparam REDUCTION_BITS = 8;
+localparam [WORD_BITS*NUM_WORDS-1:0] MODULUS = 1024'd124066695684124741398798927404814432744698427125735684128131855064976895337309138910015071214657674309443149407457493434579063840841220334555160125016331040933690674569571217337630239191517205721310197608387239846364360850220896772964978569683229449266819903414117058030106528073928633017118689826625594484331;
 
 logic clk, rst;
 
 logic [I_WORD-1:0][COEF_BITS-1:0] i_dat_a;
 logic [I_WORD*COEF_BITS-1:0] in_a;
+logic [2*I_WORD*COEF_BITS-1:0] in_a2;
 logic [I_WORD-1:0][COEF_BITS-1:0] o_dat;
 logic o_val, start;
 
@@ -67,14 +66,16 @@ poly_mod_mult_i (
 
 task test_0();
 begin
-  logic [1024-1:0] out, out_exp;
+  logic [2*I_WORD*COEF_BITS-1:0] mod, out, out_exp;
+  int sub_count;
   $display("Running test_0...");
-
+  mod = MODULUS;
   in_a = 2;
   i_dat_a = int_to_poly(in_a);
   for (int i = 0; i < 100000; i++) begin: LOOP_TEST
 
-    out_exp = (in_a**2) % MODULUS;
+    in_a2 = in_a**2;
+    out_exp = in_a2 % mod;
 
     @(negedge clk);
     start = 1;
@@ -86,13 +87,20 @@ begin
     out = poly_to_int(o_dat);
 
     // We might be off by several modulus - need to add wrapper TODO
-    while (out > MODULUS) out -= MODULUS;
+    sub_count = 0;
+    while (out >= mod) begin
+      out -= mod;
+      sub_count++;
+    end
 
     if(out != out_exp) begin
-      $display("INFO: Input: %0d (0x%0x), Output: %0d (0x%0x), Expected: %0d (0x%0x)", in_a, in_a, out, out, out_exp, out_exp);
-      $fatal(1, "ERROR - Output did not match");
+      $display("INFO: Input:   0x%0x", in_a);
+      $display("INFO: Input^2: 0x%0x", in_a2);
+      $display("INFO: Output:  0x%0x", out);
+      $display("INFO: Expected:0x%0x", out_exp);
+      $fatal(1, "ERROR - Output did not match (sub_count %0d)", sub_count);
     end else begin
-      $display("INFO: Loop %0d (input %0d) OK", i, in_a);
+      $display("INFO: Loop %0d (output 0x%0x) OK (sub_count %0d)", i, out, sub_count);
     end
 
     // Next inputs
