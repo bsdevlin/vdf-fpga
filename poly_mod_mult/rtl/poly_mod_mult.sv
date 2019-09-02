@@ -5,20 +5,19 @@
   If you change these parameters make sure to remove the reduction_lut*.mem files
   to prevent using wrong values.
 
-  Copyright (C) 2019  Benjamin Devlin.
+  Copyright 2019 Benjamin Devlin
 
-  This program is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
 
-  This program is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
+      http://www.apache.org/licenses/LICENSE-2.0
 
-  You should have received a copy of the GNU General Public License
-  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
  */
 
 module poly_mod_mult #(
@@ -150,7 +149,7 @@ generate
   for (g_i = 0; g_i < I_WORD; g_i++) begin: MUL0_I_GEN
     for (g_j = 0; g_j < I_WORD; g_j++) begin: MUL0_J_GEN
       if (!(SQ_MODE == 1 && g_i < g_j)) begin
-      
+
         multiplier #(
           .IN_BITS ( COEF_BITS )
         )
@@ -160,7 +159,7 @@ generate
           .i_dat_b ( SQ_MODE == 1 ? dat_a[g_j] : dat_b[g_j] ),
           .o_dat ( mul_out[g_i][g_j] )
         );
-        
+
       end else begin
         always_comb mul_out[g_i][g_j] = 0;
       end
@@ -196,7 +195,7 @@ endgenerate
 generate
   for (g_k = 0; g_k < NUM_ACCUM_COLS; g_k++) begin: CARRY0_K_GEN
     logic [1:0][WORD_BITS-1:0] carry0_i;
-    
+
     tree_adder #(
       .NUM_IN  ( 2         ),
       .IN_BITS ( WORD_BITS )
@@ -206,7 +205,7 @@ generate
       .i_dat ( carry0_i           ),
       .o_dat ( overflow_out0[g_k] )
     );
-    
+
     always_comb begin
       carry0_i[0] = accum_out[g_k][WORD_BITS-1:0];
       carry0_i[1] = (g_k == 0) ? 0 : accum_out[g_k-1][WORD_BITS + ACCUM_EXTRA_BITS - 1 : WORD_BITS];
@@ -219,7 +218,7 @@ generate
   for (g_i = 0; g_i < NUM_WORDS; g_i++) begin: ACCUM1_I_GEN
     localparam NUM_IN = 1 + (1 + I_WORD*2-NUM_WORDS)*REDUCTION_STAGES;
     logic [NUM_IN-1:0][WORD_BITS:0] accum1_i;
-    
+
     tree_adder #(
       .NUM_IN  ( NUM_IN        ),
       .IN_BITS ( WORD_BITS + 1 )
@@ -229,7 +228,7 @@ generate
       .i_dat ( accum1_i         ),
       .o_dat ( accum_r_out[g_i] )
     );
-    
+
     for(g_j = 0; g_j <= I_WORD*2-NUM_WORDS; g_j++) begin: ACCUM1_J_GEN
       for(g_k = 0; g_k < REDUCTION_STAGES; g_k++) begin: ACCUM1_K_GEN
         always_comb accum1_i[g_j*REDUCTION_STAGES+g_k] = {1'd0, reduction_ram_d[g_j][g_k][g_i*WORD_BITS +: WORD_BITS]};
@@ -243,7 +242,7 @@ endgenerate
 generate
   for (g_k = 0; g_k < NUM_WORDS; g_k++) begin: CARRY1_K_GEN
     logic [1:0][WORD_BITS-1:0] carry1_i;
-    
+
     tree_adder #(
       .NUM_IN  ( 2         ),
       .IN_BITS ( WORD_BITS )
@@ -253,7 +252,7 @@ generate
       .i_dat ( carry1_i            ),
       .o_dat ( overflow_r_out[g_k] )
     );
-    
+
     always_comb begin
       carry1_i[0] = accum_r_out[g_k][WORD_BITS-1:0];
       carry1_i[1] = (g_k == 0) ? 0 : accum_r_out[g_k-1][WORD_BITS + REDUCTION_EXTRA_BITS - 1 : WORD_BITS];
@@ -268,7 +267,7 @@ endgenerate
 function [I_WORD*2-1:0][(SQ_MODE == 1 ? WORD_BITS + 1 : WORD_BITS)-1 : 0] get_grid_elements(input int coef);
   int element_cnt, j, max;
   logic [I_WORD-1:0][I_WORD-1:0][$clog2(MULT_SPLITS)-1:0] mul_grid_cnt;
-  
+
   // Loop through all coefs up to the one we want.
   mul_grid_cnt = 0;
   for (int h = 0; h <= coef; h++) begin
