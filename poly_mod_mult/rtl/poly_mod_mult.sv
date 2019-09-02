@@ -278,8 +278,8 @@ function [I_WORD*2-1:0][(SQ_MODE == 1 ? WORD_BITS + 1 : WORD_BITS)-1 : 0] get_gr
     for (int y = 0; y <= h; y++) begin // x
       for (int x = 0; x <= max; x++) begin
         if (SQ_MODE == 0 || y <= x) begin
-          if (mul_grid_cnt[x][y] == MULT_SPLITS) continue;
           if (x >= I_WORD || y >= I_WORD) continue;
+          if (mul_grid_cnt[x][y] == MULT_SPLITS) continue;
           if (mul_grid_cnt[x][y] == MULT_SPLITS-1) begin
             get_grid_elements[element_cnt] = mul_out[x][y][COEF_BITS*2-1 : (MULT_SPLITS-1)*WORD_BITS ] << (SQ_MODE == 1 && x > y ? 1 : 0);
           end else begin
