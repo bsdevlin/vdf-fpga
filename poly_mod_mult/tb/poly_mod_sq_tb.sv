@@ -19,9 +19,9 @@
 module poly_mod_sq_tb ();
 
 localparam CLK_PERIOD = 100;
-localparam WORD_BITS = 32;
+localparam WORD_BITS = 64;
 localparam REDUN_WORD_BITS = 1;
-localparam NUM_WORDS = 32;
+localparam NUM_WORDS = 16;
 localparam I_WORD = NUM_WORDS + 1;
 localparam COEF_BITS = WORD_BITS + REDUN_WORD_BITS;
 localparam REDUCTION_BITS = 8;
@@ -56,11 +56,11 @@ poly_mod_sq_wrapper #(
   .SIMULATION      ( 1               )
 )
 poly_mod_mult_i (
-  .i_clk  			 ( clk     		 ),
-  .i_rst  			 ( rst     		 ),
+  .i_clk         ( clk         ),
+  .i_rst         ( rst         ),
   .i_val         ( start       ),
   .i_reduce_only ( reduce_only ),
-  .i_dat     	   ( i_dat_a     ),
+  .i_dat         ( i_dat_a     ),
   .o_dat         ( o_dat       ),
   .o_val         ( o_val       )
 );
@@ -87,7 +87,7 @@ begin
     while(!o_val) @(negedge clk);
     out = poly_to_int(o_dat);
 
-    // We might be off by several modulus - need to add wrapper TODO
+    // We might be off by several modulus - need to add wrapper that does a final "reduction only" phase
     sub_count = 0;
     while (out >= mod) begin
       out -= mod;
