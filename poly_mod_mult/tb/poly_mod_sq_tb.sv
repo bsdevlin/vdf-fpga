@@ -19,9 +19,9 @@ module poly_mod_sq_tb ();
 
 localparam CLK_PERIOD = 100;
 
-localparam WORD_BITS = 35;
-localparam NUM_WORDS = 30;
-localparam REDUCTION_BITS = 15;
+localparam WORD_BITS = 17;
+localparam NUM_WORDS = 57;
+localparam REDUCTION_BITS = 23;
 localparam [WORD_BITS*NUM_WORDS-1:0] MODULUS =  1024'd124066695684124741398798927404814432744698427125735684128131855064976895337309138910015071214657674309443149407457493434579063840841220334555160125016331040933690674569571217337630239191517205721310197608387239846364360850220896772964978569683229449266819903414117058030106528073928633017118689826625594484331;
 
 // Shouldn't need to change these
@@ -36,6 +36,8 @@ logic [I_WORD*COEF_BITS-1:0] in_a;
 logic [2*I_WORD*COEF_BITS-1:0] in_a2;
 logic [I_WORD-1:0][COEF_BITS-1:0] o_dat;
 logic o_val, start, reduce_only;
+logic                                ram_we;
+logic [NUM_WORDS-1:0][WORD_BITS-1:0] ram_d;
 
 initial begin
   rst = 0;
@@ -63,7 +65,9 @@ poly_mod_mult_i (
   .i_reduce_only ( reduce_only ),
   .i_dat         ( i_dat_a     ),
   .o_dat         ( o_dat       ),
-  .o_val         ( o_val       )
+  .o_val         ( o_val       ),
+  .i_ram_we      ( ram_we      ),
+  .i_ram_d       ( ram_d       )
 );
 
 task test_0();
@@ -122,6 +126,8 @@ endfunction
 
 initial begin
   start = 0;
+  ram_we = 0;
+  ram_d = 0;
   i_dat_a = 0;
   reduce_only = 0;
 
