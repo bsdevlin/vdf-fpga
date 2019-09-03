@@ -18,13 +18,16 @@
 module poly_mod_sq_tb ();
 
 localparam CLK_PERIOD = 100;
-localparam WORD_BITS = 64;
+
+localparam WORD_BITS = 35;
+localparam NUM_WORDS = 30;
+localparam REDUCTION_BITS = 15;
+localparam [WORD_BITS*NUM_WORDS-1:0] MODULUS =  1024'd124066695684124741398798927404814432744698427125735684128131855064976895337309138910015071214657674309443149407457493434579063840841220334555160125016331040933690674569571217337630239191517205721310197608387239846364360850220896772964978569683229449266819903414117058030106528073928633017118689826625594484331;
+
+// Shouldn't need to change these
 localparam REDUN_WORD_BITS = 1;
-localparam NUM_WORDS = 16;
-localparam I_WORD = NUM_WORDS + 1;
 localparam COEF_BITS = WORD_BITS + REDUN_WORD_BITS;
-localparam REDUCTION_BITS = 8;
-localparam [WORD_BITS*NUM_WORDS-1:0] MODULUS = 1024'd124066695684124741398798927404814432744698427125735684128131855064976895337309138910015071214657674309443149407457493434579063840841220334555160125016331040933690674569571217337630239191517205721310197608387239846364360850220896772964978569683229449266819903414117058030106528073928633017118689826625594484331;
+localparam I_WORD = NUM_WORDS + 1;
 
 logic clk, rst;
 
@@ -51,8 +54,7 @@ poly_mod_sq_wrapper #(
   .I_WORD          ( I_WORD          ),
   .COEF_BITS       ( COEF_BITS       ),
   .MODULUS         ( MODULUS         ),
-  .REDUCTION_BITS  ( REDUCTION_BITS  ),
-  .SIMULATION      ( 1               )
+  .REDUCTION_BITS  ( REDUCTION_BITS  )
 )
 poly_mod_mult_i (
   .i_clk         ( clk         ),
@@ -67,7 +69,6 @@ poly_mod_mult_i (
 task test_0();
 begin
   logic [2*I_WORD*COEF_BITS-1:0] mod, out, out_exp;
-  int sub_count;
   $display("Running test_0...");
   mod = MODULUS;
   in_a = 2;
@@ -86,21 +87,16 @@ begin
     while(!o_val) @(negedge clk);
     out = poly_to_int(o_dat);
 
-    // We might be off by several modulus - need to add wrapper that does a final "reduction only" phase
-    sub_count = 0;
-    while (out >= mod) begin
-      out -= mod;
-      sub_count++;
-    end
+    out = out % mod;
 
     if(out != out_exp) begin
       $display("INFO: Input:   0x%0x", in_a);
       $display("INFO: Input^2: 0x%0x", in_a2);
       $display("INFO: Output:  0x%0x", out);
       $display("INFO: Expected:0x%0x", out_exp);
-      $fatal(1, "ERROR - Output did not match (sub_count %0d)", sub_count);
+      $fatal(1, "ERROR - Output did not match");
     end else begin
-      $display("INFO: Loop %0d (output 0x%0x) OK (sub_count %0d)", i, out, sub_count);
+      $display("INFO: Loop %0d (output 0x%0x) OK", i, out);
     end
 
     // Next inputs
