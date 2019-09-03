@@ -117,7 +117,7 @@ generate
   for (g_i = 0; g_i < I_WORD; g_i++) begin: MUL0_I_GEN
     for (g_j = 0; g_j < I_WORD; g_j++) begin: MUL0_J_GEN
       if (!(SQ_MODE == 1 && g_i < g_j)) begin
-      
+
         multiplier #(
           .IN_BITS ( COEF_BITS )
         )
@@ -127,7 +127,7 @@ generate
           .i_dat_b ( SQ_MODE == 1 ? dat_a[g_j] : dat_b[g_j] ),
           .o_dat ( mul_out[g_i][g_j] )
         );
-        
+
       end else begin
         always_comb mul_out[g_i][g_j] = 0;
       end
@@ -163,7 +163,7 @@ endgenerate
 generate
   for (g_k = 0; g_k < NUM_ACCUM_COLS; g_k++) begin: CARRY0_K_GEN
     logic [1:0][WORD_BITS-1:0] carry0_i;
-    
+
     tree_adder #(
       .NUM_IN  ( 2         ),
       .IN_BITS ( WORD_BITS )
@@ -173,7 +173,7 @@ generate
       .i_dat ( carry0_i           ),
       .o_dat ( overflow_out0[g_k] )
     );
-    
+
     always_comb begin
       carry0_i[0] = accum_out[g_k][WORD_BITS-1:0];
       carry0_i[1] = (g_k == 0) ? 0 : accum_out[g_k-1][WORD_BITS + ACCUM_EXTRA_BITS - 1 : WORD_BITS];
@@ -186,7 +186,7 @@ generate
   for (g_i = 0; g_i < NUM_WORDS; g_i++) begin: ACCUM1_I_GEN
     localparam NUM_IN = 1 + (1 + I_WORD*2-NUM_WORDS)*REDUCTION_STAGES;
     logic [NUM_IN-1:0][WORD_BITS:0] accum1_i;
-    
+
     tree_adder #(
       .NUM_IN  ( NUM_IN        ),
       .IN_BITS ( WORD_BITS + 1 )
@@ -196,7 +196,7 @@ generate
       .i_dat ( accum1_i         ),
       .o_dat ( accum_r_out[g_i] )
     );
-    
+
     for(g_j = 0; g_j <= I_WORD*2-NUM_WORDS; g_j++) begin: ACCUM1_J_GEN
       for(g_k = 0; g_k < REDUCTION_STAGES; g_k++) begin: ACCUM1_K_GEN
         always_comb accum1_i[g_j*REDUCTION_STAGES+g_k] = {1'd0, reduction_ram_d[g_j][g_k][g_i*WORD_BITS +: WORD_BITS]};
@@ -210,7 +210,7 @@ endgenerate
 generate
   for (g_k = 0; g_k < NUM_WORDS; g_k++) begin: CARRY1_K_GEN
     logic [1:0][WORD_BITS-1:0] carry1_i;
-    
+
     tree_adder #(
       .NUM_IN  ( 2         ),
       .IN_BITS ( WORD_BITS )
@@ -220,7 +220,7 @@ generate
       .i_dat ( carry1_i            ),
       .o_dat ( overflow_r_out[g_k] )
     );
-    
+
     always_comb begin
       carry1_i[0] = accum_r_out[g_k][WORD_BITS-1:0];
       carry1_i[1] = (g_k == 0) ? 0 : accum_r_out[g_k-1][WORD_BITS + REDUCTION_EXTRA_BITS - 1 : WORD_BITS];
@@ -234,7 +234,7 @@ endgenerate
 function [I_WORD*2-1:0][(SQ_MODE == 1 ? WORD_BITS + 1 : WORD_BITS)-1 : 0] get_grid_elements(input int coef);
   int element_cnt, j, max;
   logic [I_WORD-1:0][I_WORD-1:0][$clog2(MULT_SPLITS)-1:0] mul_grid_cnt;
-  
+
   // Loop through all coefs up to the one we want.
   mul_grid_cnt = 0;
   for (int h = 0; h <= coef; h++) begin
@@ -244,8 +244,8 @@ function [I_WORD*2-1:0][(SQ_MODE == 1 ? WORD_BITS + 1 : WORD_BITS)-1 : 0] get_gr
     for (int y = 0; y <= h; y++) begin // x
       for (int x = 0; x <= max; x++) begin
         if (SQ_MODE == 0 || y <= x) begin
-          if (mul_grid_cnt[x][y] == MULT_SPLITS) continue;
           if (x >= I_WORD || y >= I_WORD) continue;
+          if (mul_grid_cnt[x][y] == MULT_SPLITS) continue;
           if (mul_grid_cnt[x][y] == MULT_SPLITS-1) begin
             get_grid_elements[element_cnt] = mul_out[x][y][COEF_BITS*2-1 : (MULT_SPLITS-1)*WORD_BITS ] << (SQ_MODE == 1 && x > y ? 1 : 0);
           end else begin
