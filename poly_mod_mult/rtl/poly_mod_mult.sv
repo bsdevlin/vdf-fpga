@@ -33,6 +33,7 @@ module poly_mod_mult #(
   parameter int                       COEF_BITS = WORD_BITS + REDUN_WORD_BITS // This is size of DSP
 ) (
   input i_clk,
+  input i_clk_s,
   input i_rst,
   input i_val,                                         // A pulse on this signal will start operating on inputs
   input i_reduce_only,                                 // This takes the input and only does a reduction operation
@@ -64,7 +65,7 @@ logic [I_WORD-1:0][COEF_BITS-1:0] dat_a, dat_b;
 logic [I_WORD*I_WORD-1:0][COEF_BITS*2-1:0] mul_out;
 
 // Convert back to our polynomial representation
-logic [NUM_ACCUM_COLS-1:0][WORD_BITS+ACCUM_EXTRA_BITS-1:0] accum_out;
+logic [NUM_ACCUM_COLS-1:0][WORD_BITS+ACCUM_EXTRA_BITS-1:0] accum_out, accum_comb;
 logic [NUM_ACCUM_COLS-1:0][COEF_BITS-1:0] overflow_out0;
 logic [NUM_ACCUM_COLS*COEF_BITS-1:0] overflow_out; // Flat array for using reduction RAM
 
@@ -135,28 +136,9 @@ generate
 endgenerate
 
 // Stage 2 is the accumulate adder tree from multiplier output
-generate
-  for (g_k = 0; g_k < NUM_ACCUM_COLS; g_k++) begin: ACC0_K_GEN
-    localparam int IN_BITS = SQ_MODE == 1 ? WORD_BITS + 1 : WORD_BITS;
-    logic [I_WORD*2-1:0][IN_BITS-1:0]    accum_i;
-    logic [IN_BITS + $clog2(I_WORD)-1:0] accum_o;
-
-    tree_adder #(
-      .NUM_IN  ( I_WORD*2 ),
-      .IN_BITS ( IN_BITS  )
-    )
-    tree_adder_stage1 (
-      .i_clk ( i_clk   ),
-      .i_dat ( accum_i ),
-      .o_dat ( accum_o )
-    );
-
-    always_comb begin
-      accum_out[g_k] = accum_o;
-      accum_i = get_grid_elements(g_k);
-    end
-  end
-endgenerate
+always_ff @ (posedge i_clk) begin
+  accum_out <= accum_comb;
+end
 
 // Stage 3 now we add any overflow bits from coeffient behind us
 generate
@@ -225,35 +207,7 @@ generate
   always_comb overflow_r_out[NUM_WORDS] = accum_r_out[NUM_WORDS-1][WORD_BITS + REDUCTION_EXTRA_BITS - 1 : WORD_BITS];
 endgenerate
 
-// For a given coef, return what grid elements should be accumulated
-// It will be everything below us that hasn't been accumulated yet
-function [I_WORD*2-1:0][(SQ_MODE == 1 ? WORD_BITS + 1 : WORD_BITS)-1 : 0] get_grid_elements(input int coef);
-  int element_cnt, j, max;
-  logic [I_WORD-1:0][I_WORD-1:0][$clog2(MULT_SPLITS)-1:0] mul_grid_cnt;
-
-  // Loop through all coefs up to the one we want.
-  mul_grid_cnt = 0;
-  for (int h = 0; h <= coef; h++) begin
-    get_grid_elements = 0;
-    element_cnt = 0;
-    max = h;
-    for (int y = 0; y <= h; y++) begin // x
-      for (int x = 0; x <= max; x++) begin
-        if (SQ_MODE == 0 || y <= x) begin
-          if (x >= I_WORD || y >= I_WORD) continue;
-          if (mul_grid_cnt[x][y] == MULT_SPLITS) continue;
-          if (mul_grid_cnt[x][y] == MULT_SPLITS-1) begin
-            get_grid_elements[element_cnt] = mul_out[x*I_WORD +y][COEF_BITS*2-1 : (MULT_SPLITS-1)*WORD_BITS ] << (SQ_MODE == 1 && x > y ? 1 : 0);
-          end else begin
-            get_grid_elements[element_cnt] = mul_out[x*I_WORD +y][ mul_grid_cnt[x][y]*WORD_BITS +: WORD_BITS ] << (SQ_MODE == 1 && x > y ? 1 : 0);
-          end
-          mul_grid_cnt[x][y] += 1;
-          element_cnt += 1;
-        end
-      end
-      max--;
-    end
-  end
-endfunction
+// This is the multiplier map
+`include "multiplier_map.sv"
 
 endmodule
