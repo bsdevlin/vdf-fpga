@@ -17,7 +17,7 @@
 
 module accum_mult_ram_mod #(
   parameter int BITS = 384,
-  parameter [BITS-1:0] MODULUS,
+  parameter [BITS-1:0] MODULUS = 1 << (BITS-1) - 10,
   parameter int A_DSP_W = 26,
   parameter int B_DSP_W = 17,
   parameter int GRID_BIT = 17
