@@ -22,9 +22,11 @@ import common_pkg::*;
 localparam CLK_PERIOD = 100;
 
 logic clk, rst;
-
-parameter int        BITS = 381;
-parameter [BITS-1:0] MODULUS = (1 << (BITS-1)) - 10;
+  
+parameter int        BITS = 128;
+parameter int        A_DSP_W = 64;
+parameter int        B_DSP_W = 64;
+parameter int        GRID_BIT = 64;
 
 if_axi_stream #(.DAT_BYTS((2*BITS+7)/8), .CTL_BITS(8)) in_if(clk);
 if_axi_stream #(.DAT_BYTS((2*BITS+7)/8), .CTL_BITS(8)) out_if(clk);
@@ -54,11 +56,10 @@ always_ff @ (posedge clk)
 
 
 accum_mult_ram_mod #(
-  .BITS    ( BITS    ),
-  .MODULUS ( MODULUS ),
-  .A_DSP_W ( 27 ),
-  .B_DSP_W ( 18 ),
-  .GRID_BIT ( 9 )
+  .BITS     ( BITS     ),
+  .A_DSP_W  ( A_DSP_W  ),
+  .B_DSP_W  ( B_DSP_W  ),
+  .GRID_BIT ( GRID_BIT )
 )
 accum_mult_ram_mod (
   .i_clk ( clk ),
@@ -75,9 +76,9 @@ accum_mult_ram_mod (
 task test_loop();
 begin
   integer signed get_len;
-  logic [common_pkg::MAX_SIM_BYTS*8-1:0] expected,  get_dat;
+  logic [common_pkg::MAX_SIM_BYTS*8-1:0] get_dat;
   logic [BITS-1:0] in_a, in_b;
-  logic [BITS*2-1:0] out;
+  logic [BITS*2-1:0] expected, out;
   integer i, max;
 
   $display("Running test_loop...");
@@ -86,8 +87,8 @@ begin
 
 
   while (i < max) begin
-    in_a = random_vector((BITS+7)/8);
-    in_b = random_vector((BITS+7)/8);
+    in_a = 1;//random_vector((BITS+7)/8);
+    in_b = 128'h10000000000000000;//random_vector((BITS+7)/8);
     expected = in_a * in_b;
     fork
       in_if.put_stream({in_b, in_a}, ((BITS*2)+7)/8, i);
@@ -108,8 +109,6 @@ begin
   $display("test_loop PASSED");
 end
 endtask;
-
-
 
 initial begin
   out_if.rdy = 0;
