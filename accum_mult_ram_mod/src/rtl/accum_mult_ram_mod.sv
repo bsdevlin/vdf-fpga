@@ -16,11 +16,11 @@
  */
 
 module accum_mult_ram_mod #(
-  parameter int BITS = 54,
+  parameter int BITS = 384,
   parameter [BITS-1:0] MODULUS,
-  parameter int A_DSP_W = 27,
-  parameter int B_DSP_W = 18,
-  parameter int GRID_BIT = 9 // Should be some common factor of DSP width
+  parameter int A_DSP_W = 26,
+  parameter int B_DSP_W = 17,
+  parameter int GRID_BIT = 17
 )(
   input i_clk,
   input i_rst,
@@ -36,14 +36,14 @@ module accum_mult_ram_mod #(
 localparam int TOT_DSP_W = A_DSP_W+B_DSP_W;
 localparam int NUM_COL = (BITS+A_DSP_W-1)/A_DSP_W;
 localparam int NUM_ROW = (BITS+B_DSP_W-1)/B_DSP_W;
-localparam int MAX_COEF = (BITS+GRID_BIT-1)/GRID_BIT;
-localparam int PIPE = 4;
+localparam int MAX_COEF = (2*BITS+GRID_BIT-1)/GRID_BIT;
+localparam int ACCUM_BITS = $clog2(NUM_COL+NUM_ROW)+GRID_BIT;
+localparam int PIPE = 5;
 
 logic [NUM_COL-1:0][A_DSP_W-1:0]             dat_a;
 logic [NUM_ROW-1:0][B_DSP_W-1:0]             dat_b;
 logic [A_DSP_W+B_DSP_W-1:0]                  mul_grid [NUM_COL][NUM_ROW];
-logic [$clog2(NUM_COL+NUM_ROW)+GRID_BIT-1:0] accum_grid_o [MAX_COEF*2];
-logic [BITS*2-1:0]                           res_c;
+logic [ACCUM_BITS-1:0]                       accum_grid_o [MAX_COEF];
 logic [PIPE-1:0]                             val;
 
 genvar gx, gy;
@@ -85,14 +85,25 @@ endgenerate
 
 `include "accum_gen.sv"
 
+// Now we do the reduction and propigate carries
+// Split add across 2 pipelines
+
+logic [ACCUM_BITS*MAX_COEF/2-1:0]  res_h_c, res_l_c, res_h_r, res_l_r;
+
 always_comb begin
-  res_c = 0;
-  for (int i = 0; i < MAX_COEF*2; i++)
-    res_c += accum_grid_o[i] << (i*GRID_BIT);
+  res_l_c = 0;
+  for (int i = 0; i < MAX_COEF/2; i++)
+    res_l_c += accum_grid_o[i] << (i*GRID_BIT);
+    
+  res_h_c = 0;
+  for (int i = 0; i < MAX_COEF-(MAX_COEF/2); i++)
+    res_h_c += accum_grid_o[i+MAX_COEF/2] << (i*GRID_BIT);
 end
 
 always_ff @ (posedge i_clk) begin
-   o_dat <= res_c;
+  res_h_r <= res_h_c;
+  res_l_r <= res_l_c;
+  o_dat <= res_l_r + (res_h_r << (GRID_BIT*MAX_COEF/2));
 end
 
 
