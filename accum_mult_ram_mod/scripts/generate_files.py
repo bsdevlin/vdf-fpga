@@ -26,10 +26,10 @@ import math
 ####################
 
 GEN_ACCUM = 1
-BITS = 381
-A_DSP_W = 27
-B_DSP_W = 18
-GRID_BIT = 9 # Should be multiple of A_BIT_W and B_BIT_W
+BITS = 1024
+A_DSP_W = 64
+B_DSP_W = 64
+GRID_BIT = 64 # Should be multiple of A_BIT_W and B_BIT_W
 
 RES_W = A_DSP_W+B_DSP_W
 NUM_COL = (BITS+A_DSP_W-1)//A_DSP_W;
@@ -48,21 +48,54 @@ def get_accum_gen():
     for y in range(NUM_ROW):
       products.append((x, y, x*A_DSP_W+y*B_DSP_W))
 
+
   # Now match these to coef
   coef = list()
+  max_bits_l = list()
   for i in range(MAX_COEF):
+    size = list()
+    # First do a pass just to check bit sizes
+    for j in products:
+      start = max(j[2], i*GRID_BIT)
+      end = min(j[2]+RES_W, (i+1)*GRID_BIT)
+      if (end > start):
+        size.append(end-start)
+    # Max bits 1 + clog2() of the max size in our list
+    max_bits = 1 + max(size) + math.ceil(math.log2(size.count(max(size))))
+    max_bits_l.append(max_bits)
+    
     coef_l = list()
     for j in products:
       # Check if we are in range
-      if i*GRID_BIT >= j[2] and i*GRID_BIT < (j[2]+RES_W):
-        offset = (j[0]*A_DSP_W)+(j[1]*B_DSP_W)
-        coef_l.append('mul_grid[{}][{}][{}:{}]'.format(j[0], j[1], min((i+1)*GRID_BIT-1, j[2]+RES_W)-offset, i*GRID_BIT-offset))
+      offset = (j[0]*A_DSP_W)+(j[1]*B_DSP_W)
+      start = max(j[2], i*GRID_BIT)
+      end = min(j[2]+RES_W, (i+1)*GRID_BIT)
+      if (end > start):
+        bitwidth = end-start
+        end_padding = max(start+max_bits-end, 0)
+        start_padding = max(start - i*GRID_BIT, 0)
+        if start_padding > 0:
+          coef_l.append('{{{{{}{{1\'d0}}}},mul_grid[{}][{}][{}+:{}],{{{}{{1\'d0}}}}}}'.format(end_padding, j[0], j[1], start-offset, bitwidth, start_padding))
+        else:
+          coef_l.append('{{{{{}{{1\'d0}}}},mul_grid[{}][{}][{}+:{}]}}'.format(end_padding, j[0], j[1], start-offset, bitwidth))
+
     coef.append(coef_l)
 
   # Create compressor trees and output
   for idx, i in enumerate(coef):
-    MAX_BITS = GRID_BIT + math.ceil(math.log2(len(i)))
-    accum_s +='''
+    #MAX_BITS = GRID_BIT + math.ceil(math.log2(len(i)))
+    if (len(i) == 1):
+      accum_s +='''
+// Coef {}
+always_ff @ (posedge i_clk) accum_grid_o[{}] <= {};
+'''.format(idx, idx, i[0])
+    elif (len(i) == 2):
+      accum_s +='''
+// Coef {}
+always_ff @ (posedge i_clk) accum_grid_o[{}] <= {};
+'''.format(idx, idx, ' + '.join(i))
+    else:
+      accum_s +='''
 // Coef {}
 logic [{}:0] accum_i_{} [{}];
 logic [{}:0] accum_o_c_{}, accum_o_s_{};
@@ -77,7 +110,7 @@ ct_{} (
 );
 always_comb accum_i_{} = {{{}}};
 always_ff @ (posedge i_clk) accum_grid_o[{}] <= accum_o_c_{} + accum_o_s_{};
-'''.format(idx, MAX_BITS-1, idx, len(i), MAX_BITS-1, idx, idx, len(i), MAX_BITS, idx, idx, idx, idx, idx, ','.join(i), idx, idx, idx)
+'''.format(idx, max_bits_l[idx]-1, idx, len(i), max_bits_l[idx]-1, idx, idx, len(i), max_bits_l[idx], idx, idx, idx, idx, idx, ','.join(i), idx, idx, idx)
 
   return accum_s
 

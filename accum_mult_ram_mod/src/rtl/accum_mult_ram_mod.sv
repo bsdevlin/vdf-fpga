@@ -16,10 +16,10 @@
  */
 
 module accum_mult_ram_mod #(
-  parameter int BITS = 384,
-  parameter int A_DSP_W = 26,
-  parameter int B_DSP_W = 17,
-  parameter int GRID_BIT = 17
+  parameter BITS = 384,
+  parameter A_DSP_W = 26,
+  parameter B_DSP_W = 17,
+  parameter GRID_BIT = 17
 )(
   input i_clk,
   input i_rst,
@@ -39,11 +39,11 @@ localparam int MAX_COEF = (2*BITS+GRID_BIT-1)/GRID_BIT;
 localparam int ACCUM_BITS = $clog2(NUM_COL+NUM_ROW)+GRID_BIT;
 localparam int PIPE = 5;
 
-logic [NUM_COL-1:0][A_DSP_W-1:0]             dat_a;
-logic [NUM_ROW-1:0][B_DSP_W-1:0]             dat_b;
-logic [A_DSP_W+B_DSP_W-1:0]                  mul_grid [NUM_COL][NUM_ROW];
-logic [ACCUM_BITS-1:0]                       accum_grid_o [MAX_COEF];
-logic [PIPE-1:0]                             val;
+logic [A_DSP_W*NUM_COL-1:0]             dat_a;
+logic [B_DSP_W*NUM_ROW-1:0]             dat_b;
+logic [A_DSP_W+B_DSP_W-1:0]             mul_grid [NUM_COL][NUM_ROW];
+logic [ACCUM_BITS-1:0]                  accum_grid_o [MAX_COEF-1:0];
+logic [PIPE-1:0]                        val;
 
 genvar gx, gy;
 
@@ -65,22 +65,24 @@ end
 
 // Logic for handling multiple pipelines
 always_ff @ (posedge i_clk) begin
+
+
   if (i_val && o_rdy) begin
-    dat_a <= i_dat_a;
-    dat_b <= i_dat_b;
+    for (int i = 0; i < NUM_COL; i++)
+      dat_a <= 0;
+      dat_b <= 0;
+      dat_a <= i_dat_a;
+      dat_b <= i_dat_b;
   end
 end
 
-// Generate multipliers
-generate
-  for (gx = 0; gx < NUM_COL; gx++) begin: GEN_MUL_X
-    for (gy = 0; gy < NUM_ROW; gy++) begin: GEN_MUL_Y
-      always_ff @ (posedge i_clk) begin
-        mul_grid[gx][gy] <= dat_a[gx] * dat_b[gy];
-      end
+
+always_ff @ (posedge i_clk) begin
+  for (int i = 0; i < NUM_COL; i++)
+    for (int j = 0; j < NUM_ROW; j++) begin
+      mul_grid[i][j] <= dat_a[i*A_DSP_W +: A_DSP_W] * dat_b[j*B_DSP_W +: B_DSP_W];
     end
-  end
-endgenerate
+end
 
 `include "accum_gen.sv"
 
@@ -93,7 +95,7 @@ always_comb begin
   res_l_c = 0;
   for (int i = 0; i < MAX_COEF/2; i++)
     res_l_c += accum_grid_o[i] << (i*GRID_BIT);
-    
+
   res_h_c = 0;
   for (int i = 0; i < MAX_COEF-(MAX_COEF/2); i++)
     res_h_c += accum_grid_o[i+MAX_COEF/2] << (i*GRID_BIT);

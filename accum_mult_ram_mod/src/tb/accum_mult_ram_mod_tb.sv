@@ -23,10 +23,10 @@ localparam CLK_PERIOD = 100;
 
 logic clk, rst;
   
-parameter int        BITS = 128;
-parameter int        A_DSP_W = 64;
-parameter int        B_DSP_W = 64;
-parameter int        GRID_BIT = 64;
+parameter         BITS = 1024;
+parameter         A_DSP_W = 64;
+parameter         B_DSP_W = 64;
+parameter         GRID_BIT = 64;
 
 if_axi_stream #(.DAT_BYTS((2*BITS+7)/8), .CTL_BITS(8)) in_if(clk);
 if_axi_stream #(.DAT_BYTS((2*BITS+7)/8), .CTL_BITS(8)) out_if(clk);
@@ -87,8 +87,8 @@ begin
 
 
   while (i < max) begin
-    in_a = 1;//random_vector((BITS+7)/8);
-    in_b = 128'h10000000000000000;//random_vector((BITS+7)/8);
+    in_a = random_vector((BITS+7)/8);
+    in_b = random_vector((BITS+7)/8);
     expected = in_a * in_b;
     fork
       in_if.put_stream({in_b, in_a}, ((BITS*2)+7)/8, i);
@@ -102,7 +102,7 @@ begin
       $display("Was:      0x%0x", out);
       $fatal(1, "ERROR: Output did not match");
     end
-    $display("test_loop PASSED loop %d/%d", i, max);
+    $display("test_loop PASSED loop %d/%d - 0x%0x", i, max, out);
     i = i + 1;
   end
 
