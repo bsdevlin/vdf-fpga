@@ -16,13 +16,13 @@
 */
 `timescale 1ps/1ps
 
-module accum_mult_ram_mod_tb ();
+module accum_mult_tb ();
 import common_pkg::*;
 
 localparam CLK_PERIOD = 100;
 
 logic clk, rst;
-  
+
 parameter         BITS = 1024;
 parameter         A_DSP_W = 64;
 parameter         B_DSP_W = 64;
