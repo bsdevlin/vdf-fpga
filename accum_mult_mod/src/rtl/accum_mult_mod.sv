@@ -47,13 +47,14 @@ localparam int NUM_COL = (BITS+A_DSP_W-1)/A_DSP_W;
 localparam int NUM_ROW = (BITS+B_DSP_W-1)/B_DSP_W;
 localparam int MAX_COEF = (2*BITS+GRID_BIT-1)/GRID_BIT;
 localparam int ACCUM_BITS = $clog2(NUM_COL+NUM_ROW)+GRID_BIT+$clog2(BITS/RAM_A_W);
-localparam int PIPE = 6;
+localparam int PIPE = 7;
 
 logic [A_DSP_W*NUM_COL-1:0]             dat_a;
 logic [B_DSP_W*NUM_ROW-1:0]             dat_b;
 logic [A_DSP_W+B_DSP_W-1:0]             mul_grid [NUM_COL][NUM_ROW];
 logic [ACCUM_BITS-1:0]                  accum_grid_o [MAX_COEF-1:0];
 logic [ACCUM_BITS-1:0]                  accum_grid_o_r [MAX_COEF/2-1:0];
+logic [ACCUM_BITS-1:0]                  accum_grid_o_rr [MAX_COEF/2-1:0];
 logic [ACCUM_BITS-1:0]                  accum2_grid_o [MAX_COEF/2-1:0];
 logic [ACCUM_BITS*MAX_COEF/2-1:0]       res_l0_c;
 logic signed [ACCUM_BITS*MAX_COEF/2:0]  res_l1_c;
@@ -101,8 +102,10 @@ end
 
 // Register lower half accumulator output while we lookup BRAM
 always_ff @ (posedge i_clk)
-  for (int i = 0; i < MAX_COEF/2; i++)
+  for (int i = 0; i < MAX_COEF/2; i++) begin
     accum_grid_o_r[i] <= accum_grid_o[i];
+    accum_grid_o_rr[i] <= accum_grid_o_r[i];
+  end
 
 // Now we have two data paths - we propigate carries and add the modulus
 always_comb begin
@@ -113,7 +116,8 @@ always_comb begin
 end
 
 always_ff @ (posedge i_clk)
-  o_dat <= res_l1_c >= 0 ? res_l1_c : res_l0_c;
+  //o_dat <= res_l1_c >= 0 ? res_l1_c : res_l0_c;
+  o_dat <= res_l0_c;
 
 
 endmodule

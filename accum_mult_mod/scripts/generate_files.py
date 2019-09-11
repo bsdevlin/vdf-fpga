@@ -30,7 +30,7 @@ MODULUS = 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eab
 A_DSP_W = 26
 B_DSP_W = 17
 GRID_BIT = 32
-RAM_A_W = 8
+RAM_A_W = 12
 
 RES_W = A_DSP_W+B_DSP_W
 NUM_COL = (BITS+A_DSP_W-1)//A_DSP_W;
@@ -180,10 +180,14 @@ always_ff @ (posedge i_clk) accum_grid_o[{}] <= accum_o_c_{} + accum_o_s_{};
     ram_s1 += '''
 logic [{}:0]    mod_ram_{}_a;
 logic [{}:0]    mod_ram_{}_q;
+logic [{}:0]    mod_ram_{}_q_r;
 logic [{}:0]    mod_ram_{}_ram [{}];
-always_ff @ (posedge i_clk) mod_ram_{}_q <= mod_ram_{}_ram[mod_ram_{}_a];
+always_ff @ (posedge i_clk) begin
+  mod_ram_{}_q <= mod_ram_{}_ram[mod_ram_{}_a];
+  mod_ram_{}_q_r <= mod_ram_{}_q;
+end
 initial $readmemh( "mod_ram_{}.mem", mod_ram_{}_ram);
-'''.format(RAM_A_W-1, idx, MODULUS.bit_length()-1, idx, MODULUS.bit_length()-1, idx, 1 << RAM_A_W, idx, idx, idx, idx, idx)
+'''.format(RAM_A_W-1, idx, MODULUS.bit_length()-1, idx, MODULUS.bit_length()-1, idx, MODULUS.bit_length()-1, idx, 1 << RAM_A_W, idx, idx, idx, idx, idx, idx, idx)
 
   # We now generate the tree adders to sum the reduction values with the accum_grid_o values
   accum2_s = '\n'
@@ -197,14 +201,14 @@ initial $readmemh( "mod_ram_{}.mem", mod_ram_{}_ram);
     if (padding == 0):
       max_bits_l[coef] += math.ceil(math.log2(len(ram_addr_bits)))
       padding = max_bits_l[coef] - ram_bits
-    in_s = ['{{{{{}{{1\'d0}}}}, mod_ram_{}_q[{}+:{}]}}'.format(padding, i, coef*GRID_BIT, ram_bits) for i in range(len(ram_addr_bits))]
+    in_s = ['{{{{{}{{1\'d0}}}}, mod_ram_{}_q_r[{}+:{}]}}'.format(padding, i, coef*GRID_BIT, ram_bits) for i in range(len(ram_addr_bits))]
     # Need to check if we also had reduction in this range
     end = max_bits_l[coef]-1
     padding = 0
     if (reduc_coef == coef):
       padding = end - reduc_bit
       end = reduc_bit-1
-    in_s.append('{{{{{}{{1\'d0}}}}, accum_grid_o_r[{}][{}:0]}}'.format(padding, coef, end))
+    in_s.append('{{{{{}{{1\'d0}}}}, accum_grid_o_rr[{}][{}:0]}}'.format(padding, coef, end))
     accum2_s +='''
 // Coef {} accum 2 stage
 logic [{}:0] accum2_i_{} [{}];

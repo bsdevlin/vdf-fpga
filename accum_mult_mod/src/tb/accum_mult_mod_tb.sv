@@ -28,7 +28,7 @@ parameter [380:0]  MODULUS = 381'h1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512
 parameter          A_DSP_W = 26;
 parameter          B_DSP_W = 17;
 parameter          GRID_BIT = 32;
-parameter          RAM_A_W = 8;
+parameter          RAM_A_W = 12;
 
 // This is the max size we can expect on the output
 parameter MAX_IN_BITS = 381;// $clog2(MODULUS) + $clog2((2*BITS-$clog2(MODULUS))/RAM_A_W) + 1;
@@ -86,6 +86,7 @@ begin
   logic [common_pkg::MAX_SIM_BYTS*8-1:0] get_dat;
   logic [BITS-1:0] in_a, in_b, out;
   logic [BITS*2-1:0] expected;
+  integer t;
   integer i, max;
 
   $display("Running test_loop...");
@@ -93,8 +94,8 @@ begin
   max = 1000;
 
   while (i < max) begin
-    in_a = 1<< i;//random_vector((BITS+7)/8) % (1 << MAX_IN_BITS);
-    in_b = 1<<i;//random_vector((BITS+7)/8) % (1 << MAX_IN_BITS);
+    in_a = random_vector((BITS+7)/8) % MODULUS;
+    in_b = random_vector((BITS+7)/8) % MODULUS;
     expected = (in_a * in_b) % MODULUS;
     fork
       in_if.put_stream({in_b, in_a}, ((BITS*2)+7)/8, i);
@@ -107,13 +108,16 @@ begin
       $display("Output was: 0x%0x", out);
       $fatal(1, "ERROR: More bits than we were expecting");
     end*/
+    
+    t = out / MODULUS;
+    out = out % MODULUS;
 
-    assert((out % MODULUS) == expected) else begin
+    assert(out== expected) else begin
       $display("Expected: 0x%0x", expected);
-      $display("Was:      0x%0x", out);
+      $display("Was:      0x%0x (t=%0d)", out, t);
       $fatal(1, "ERROR: Output did not match");
     end
-    $display("test_loop PASSED loop %d/%d - 0x%0x", i, max, out);
+    $display("test_loop PASSED loop %d/%d - 0x%0x (t=%0d)", i, max, out, t);
     i = i + 1;
   end
 
