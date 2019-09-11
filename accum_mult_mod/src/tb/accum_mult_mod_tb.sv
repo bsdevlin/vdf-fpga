@@ -16,20 +16,25 @@
 */
 `timescale 1ps/1ps
 
-module accum_mult_tb ();
+module accum_mult_mod_tb ();
 import common_pkg::*;
 
 localparam CLK_PERIOD = 100;
 
 logic clk, rst;
 
-parameter         BITS = 1024;
-parameter         A_DSP_W = 64;
-parameter         B_DSP_W = 64;
-parameter         GRID_BIT = 64;
+parameter          BITS = 392;
+parameter [380:0]  MODULUS = 381'h1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab;
+parameter          A_DSP_W = 26;
+parameter          B_DSP_W = 17;
+parameter          GRID_BIT = 32;
+parameter          RAM_A_W = 8;
+
+// This is the max size we can expect on the output
+parameter MAX_IN_BITS = 381;// $clog2(MODULUS) + $clog2((2*BITS-$clog2(MODULUS))/RAM_A_W) + 1;
 
 if_axi_stream #(.DAT_BYTS((2*BITS+7)/8), .CTL_BITS(8)) in_if(clk);
-if_axi_stream #(.DAT_BYTS((2*BITS+7)/8), .CTL_BITS(8)) out_if(clk);
+if_axi_stream #(.DAT_BYTS((BITS+7)/8), .CTL_BITS(8)) out_if(clk);
 
 initial begin
   rst = 0;
@@ -55,13 +60,15 @@ always_ff @ (posedge clk)
     $error(1, "%m %t ERROR: output .err asserted", $time);
 
 
-accum_mult_ram_mod #(
+accum_mult_mod #(
   .BITS     ( BITS     ),
+  .MODULUS  ( MODULUS  ),
   .A_DSP_W  ( A_DSP_W  ),
   .B_DSP_W  ( B_DSP_W  ),
-  .GRID_BIT ( GRID_BIT )
+  .GRID_BIT ( GRID_BIT ),
+  .RAM_A_W  ( RAM_A_W  )
 )
-accum_mult_ram_mod (
+accum_mult_mod (
   .i_clk ( clk ),
   .i_rst ( rst ),
   .i_val ( in_if.val  ),
@@ -77,27 +84,31 @@ task test_loop();
 begin
   integer signed get_len;
   logic [common_pkg::MAX_SIM_BYTS*8-1:0] get_dat;
-  logic [BITS-1:0] in_a, in_b;
-  logic [BITS*2-1:0] expected, out;
+  logic [BITS-1:0] in_a, in_b, out;
+  logic [BITS*2-1:0] expected;
   integer i, max;
 
   $display("Running test_loop...");
   i = 0;
   max = 1000;
 
-
   while (i < max) begin
-    in_a = random_vector((BITS+7)/8);
-    in_b = random_vector((BITS+7)/8);
-    expected = in_a * in_b;
+    in_a = 1<< i;//random_vector((BITS+7)/8) % (1 << MAX_IN_BITS);
+    in_b = 1<<i;//random_vector((BITS+7)/8) % (1 << MAX_IN_BITS);
+    expected = (in_a * in_b) % MODULUS;
     fork
       in_if.put_stream({in_b, in_a}, ((BITS*2)+7)/8, i);
       out_if.get_stream(get_dat, get_len, 0);
     join
 
     out = get_dat;
+    
+    /*assert (out >> MAX_IN_BITS == 0) else begin
+      $display("Output was: 0x%0x", out);
+      $fatal(1, "ERROR: More bits than we were expecting");
+    end*/
 
-    assert(out == expected) else begin
+    assert((out % MODULUS) == expected) else begin
       $display("Expected: 0x%0x", expected);
       $display("Was:      0x%0x", out);
       $fatal(1, "ERROR: Output did not match");

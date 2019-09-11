@@ -1,4 +1,12 @@
 /*
+  This does a BITS multiplication using adder tree and parameterizable
+  DSP sizes. A python script generates the accum_gen.sv file.
+
+  Does modulus reduction using RAM tables. Multiplication and reduction has
+  latency of 5 clock cycles and a throughput of 1 clock cycle per result.
+
+  TODO: Properly add in flow control
+  TODO: final check for modulus
 
   Copyright 2019 Benjamin Devlin
 
@@ -15,11 +23,13 @@
   limitations under the License.
  */
 
-module accum_mult_ram_mod #(
-  parameter BITS = 384,
-  parameter A_DSP_W = 26,
-  parameter B_DSP_W = 17,
-  parameter GRID_BIT = 17
+module accum_mult_mod #(
+  parameter BITS,
+  parameter [BITS-1:0] MODULUS,
+  parameter A_DSP_W,
+  parameter B_DSP_W,
+  parameter GRID_BIT,
+  parameter RAM_A_W
 )(
   input i_clk,
   input i_rst,
@@ -29,20 +39,24 @@ module accum_mult_ram_mod #(
   output logic o_rdy,
   input        [BITS-1:0] i_dat_a,
   input        [BITS-1:0] i_dat_b,
-  output logic [BITS*2-1:0] o_dat
+  output logic [BITS-1:0] o_dat
 );
 
 localparam int TOT_DSP_W = A_DSP_W+B_DSP_W;
 localparam int NUM_COL = (BITS+A_DSP_W-1)/A_DSP_W;
 localparam int NUM_ROW = (BITS+B_DSP_W-1)/B_DSP_W;
 localparam int MAX_COEF = (2*BITS+GRID_BIT-1)/GRID_BIT;
-localparam int ACCUM_BITS = $clog2(NUM_COL+NUM_ROW)+GRID_BIT;
-localparam int PIPE = 5;
+localparam int ACCUM_BITS = $clog2(NUM_COL+NUM_ROW)+GRID_BIT+$clog2(BITS/RAM_A_W);
+localparam int PIPE = 6;
 
 logic [A_DSP_W*NUM_COL-1:0]             dat_a;
 logic [B_DSP_W*NUM_ROW-1:0]             dat_b;
 logic [A_DSP_W+B_DSP_W-1:0]             mul_grid [NUM_COL][NUM_ROW];
 logic [ACCUM_BITS-1:0]                  accum_grid_o [MAX_COEF-1:0];
+logic [ACCUM_BITS-1:0]                  accum_grid_o_r [MAX_COEF/2-1:0];
+logic [ACCUM_BITS-1:0]                  accum2_grid_o [MAX_COEF/2-1:0];
+logic [ACCUM_BITS*MAX_COEF/2-1:0]       res_l0_c;
+logic signed [ACCUM_BITS*MAX_COEF/2:0]  res_l1_c;
 logic [PIPE-1:0]                        val;
 
 genvar gx, gy;
@@ -65,9 +79,7 @@ end
 
 // Logic for handling multiple pipelines
 always_ff @ (posedge i_clk) begin
-
-
-  if (i_val && o_rdy) begin
+  if (~val[0] || (val[0] && i_rdy)) begin
     for (int i = 0; i < NUM_COL; i++)
       dat_a <= 0;
       dat_b <= 0;
@@ -80,32 +92,28 @@ end
 always_ff @ (posedge i_clk) begin
   for (int i = 0; i < NUM_COL; i++)
     for (int j = 0; j < NUM_ROW; j++) begin
-      mul_grid[i][j] <= dat_a[i*A_DSP_W +: A_DSP_W] * dat_b[j*B_DSP_W +: B_DSP_W];
+      if (~val[1] || (val[1] && i_rdy))
+        mul_grid[i][j] <= dat_a[i*A_DSP_W +: A_DSP_W] * dat_b[j*B_DSP_W +: B_DSP_W];
     end
 end
 
-`include "accum_gen.sv"
+`include "accum_mult_mod_generated.sv"
 
-// Now we do the reduction and propigate carries
-// Split add across 2 pipelines
-
-logic [ACCUM_BITS*MAX_COEF/2-1:0]  res_h_c, res_l_c, res_h_r, res_l_r;
-
-always_comb begin
-  res_l_c = 0;
+// Register lower half accumulator output while we lookup BRAM
+always_ff @ (posedge i_clk)
   for (int i = 0; i < MAX_COEF/2; i++)
-    res_l_c += accum_grid_o[i] << (i*GRID_BIT);
+    accum_grid_o_r[i] <= accum_grid_o[i];
 
-  res_h_c = 0;
-  for (int i = 0; i < MAX_COEF-(MAX_COEF/2); i++)
-    res_h_c += accum_grid_o[i+MAX_COEF/2] << (i*GRID_BIT);
+// Now we have two data paths - we propigate carries and add the modulus
+always_comb begin
+  res_l0_c = 0;
+  for (int i = 0; i < MAX_COEF/2; i++)
+    res_l0_c += accum2_grid_o[i] << (i*GRID_BIT);
+  res_l1_c = res_l0_c - MODULUS;
 end
 
-always_ff @ (posedge i_clk) begin
-  res_h_r <= res_h_c;
-  res_l_r <= res_l_c;
-  o_dat <= res_l_r + (res_h_r << (GRID_BIT*MAX_COEF/2));
-end
+always_ff @ (posedge i_clk)
+  o_dat <= res_l1_c >= 0 ? res_l1_c : res_l0_c;
 
 
 endmodule
