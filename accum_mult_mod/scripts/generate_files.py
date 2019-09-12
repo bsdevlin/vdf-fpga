@@ -25,12 +25,12 @@ import math
 # Generate the multiplier output to carry-save adder tree mapping
 ####################
 
-BITS = 392
+BITS = 381+1
 MODULUS = 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab
 A_DSP_W = 26
 B_DSP_W = 17
-GRID_BIT = 32
-RAM_A_W = 12
+GRID_BIT = 64 #32
+RAM_A_W = 10
 
 RES_W = A_DSP_W+B_DSP_W
 NUM_COL = (BITS+A_DSP_W-1)//A_DSP_W;
@@ -63,7 +63,8 @@ def get_accum_gen():
       if (end > start):
         size.append(end-i*GRID_BIT)#start)
     # Max bits 1 + clog2() of the max size in our list
-    max_bits = max(size) + math.ceil(math.log2(size.count(max(size))))
+    #max_bits = max(size) + math.ceil(math.log2(size.count(max(size))))
+    max_bits = max(size) + math.ceil(math.log2(len(size)))
     max_bits_l.append(max_bits)
     
     coef_l = list()
@@ -121,23 +122,21 @@ always_ff @ (posedge i_clk) accum_grid_o[{}] <= accum_o_c_{} + accum_o_s_{};
   ram_bit_low = 0
   ram_addr_bits = list()
 
-  
-
   curr_bit = MODULUS.bit_length() % GRID_BIT
   coef = (MODULUS.bit_length()//GRID_BIT)
   reduc_coef = coef
   reduc_bit = curr_bit
-  ram_s += 'always_comb begin\n'
+  ram_s += 'always_ff @ (posedge i_clk) begin\n'
   mem_s = ''
   #Reduce all bits after this
   while(coef < MAX_COEF):
     # Get max bits we can take from this coef
     max_bits = min(max_bits_l[coef]-curr_bit, RAM_A_W-ram_bit_low)
-    ram_s += '  mod_ram_{}_a[{}+:{}] = accum_grid_o[{}][{}+:{}];\n'.format(len(ram_addr_bits), ram_bit_low, max_bits, coef, curr_bit, max_bits)
+    ram_s += '  mod_ram_{}_a[{}+:{}] <= accum_grid_o[{}][{}+:{}];\n'.format(len(ram_addr_bits), ram_bit_low, max_bits, coef, curr_bit, max_bits)
     
     if ((ram_bit_low + max_bits == RAM_A_W) or (coef == MAX_COEF - 1 and curr_bit + max_bits == max_bits_l[coef])):
       if (ram_bit_low + max_bits != RAM_A_W):
-        ram_s += '  mod_ram_{}_a[{}+:{}] = 0;\n'.format(len(ram_addr_bits), ram_bit_low+max_bits, RAM_A_W-(ram_bit_low+max_bits))
+        ram_s += '  mod_ram_{}_a[{}+:{}] <= 0;\n'.format(len(ram_addr_bits), ram_bit_low+max_bits, RAM_A_W-(ram_bit_low+max_bits))
 
       # Generate the init file lines - need to take into account earlier address bits
       max_bits_value = max_bits + ram_bit_low
@@ -180,14 +179,12 @@ always_ff @ (posedge i_clk) accum_grid_o[{}] <= accum_o_c_{} + accum_o_s_{};
     ram_s1 += '''
 logic [{}:0]    mod_ram_{}_a;
 logic [{}:0]    mod_ram_{}_q;
-logic [{}:0]    mod_ram_{}_q_r;
 logic [{}:0]    mod_ram_{}_ram [{}];
 always_ff @ (posedge i_clk) begin
   mod_ram_{}_q <= mod_ram_{}_ram[mod_ram_{}_a];
-  mod_ram_{}_q_r <= mod_ram_{}_q;
 end
 initial $readmemh( "mod_ram_{}.mem", mod_ram_{}_ram);
-'''.format(RAM_A_W-1, idx, MODULUS.bit_length()-1, idx, MODULUS.bit_length()-1, idx, MODULUS.bit_length()-1, idx, 1 << RAM_A_W, idx, idx, idx, idx, idx, idx, idx)
+'''.format(RAM_A_W-1, idx, MODULUS.bit_length()-1, idx, MODULUS.bit_length()-1, idx, 1 << RAM_A_W, idx, idx, idx, idx, idx)
 
   # We now generate the tree adders to sum the reduction values with the accum_grid_o values
   accum2_s = '\n'
@@ -198,17 +195,17 @@ initial $readmemh( "mod_ram_{}.mem", mod_ram_{}_ram);
     else:
       ram_bits = GRID_BIT
     padding = max_bits_l[coef] - ram_bits
-    if (padding == 0):
-      max_bits_l[coef] += math.ceil(math.log2(len(ram_addr_bits)))
-      padding = max_bits_l[coef] - ram_bits
-    in_s = ['{{{{{}{{1\'d0}}}}, mod_ram_{}_q_r[{}+:{}]}}'.format(padding, i, coef*GRID_BIT, ram_bits) for i in range(len(ram_addr_bits))]
+    #if (padding == 0):
+    max_bits_l[coef] += math.ceil(math.log2(len(ram_addr_bits)))
+    padding = max_bits_l[coef] - ram_bits
+    in_s = ['{{{{{}{{1\'d0}}}}, mod_ram_{}_q[{}+:{}]}}'.format(padding, i, coef*GRID_BIT, ram_bits) for i in range(len(ram_addr_bits))]
     # Need to check if we also had reduction in this range
     end = max_bits_l[coef]-1
     padding = 0
     if (reduc_coef == coef):
       padding = end - reduc_bit
       end = reduc_bit-1
-    in_s.append('{{{{{}{{1\'d0}}}}, accum_grid_o_rr[{}][{}:0]}}'.format(padding, coef, end))
+    in_s.append('{{{{{}{{1\'d0}}}}, accum_grid_o_r[{}][{}:0]}}'.format(padding, coef, end))
     accum2_s +='''
 // Coef {} accum 2 stage
 logic [{}:0] accum2_i_{} [{}];
@@ -226,10 +223,53 @@ always_comb accum2_i_{} = {{{}}};
 always_ff @ (posedge i_clk) accum2_grid_o[{}] <= accum2_o_c_{} + accum2_o_s_{};
 '''.format(coef, max_bits_l[coef]-1, coef, len(ram_addr_bits)+1, max_bits_l[coef]-1, coef, coef, len(ram_addr_bits)+1, max_bits_l[coef], coef, coef, coef, coef, coef, ','.join(in_s), coef, coef, coef)
 
-
   ram_s = ram_s1 + ram_s
-      
-  return accum_s + ram_s + accum2_s
+
+  # We also need to do a final level reduction
+  accum3_s = '''
+logic [{}:0]    mod_ram2_0_a;
+logic [{}:0]    mod_ram2_0_q;
+always_comb begin
+  mod_ram2_0_a = res0_r[{}+:{}];
+end
+always_ff @ (posedge i_clk) begin
+  mod_ram2_0_q <= mod_ram_0_ram[mod_ram2_0_a];
+end
+
+always_comb 
+  res1_c = res0_rr[{}:0] + mod_ram2_0_q;
+'''.format(RAM_A_W-1, MODULUS.bit_length()-1, MODULUS.bit_length(), RAM_A_W, MODULUS.bit_length()-1)
+
+  # We also generate the arrays since we know the max sizes
+  logic_s = '''
+
+logic [{}:0]                  accum_grid_o [{}];
+logic [{}:0]                  accum_grid_o_r [{}];
+logic [{}:0]                  accum2_grid_o [{}];
+'''.format(max(max_bits_l)-1, MAX_COEF, max(max_bits_l)-1, MAX_COEF//2, max(max_bits_l)-1, MAX_COEF//2)
+
+  # Add logic for writing to memory
+  ram_write_s = '''
+localparam int RAM_PIPE = 4;
+logic [RAM_PIPE:0][$clog2({})-1:0] addr;
+logic [RAM_PIPE:0][RAM_D_W-1:0]    ram_d;
+logic [RAM_PIPE:0]                 ram_we;
+logic [{}:0]                         dat_cnt;
+
+always_ff @ (posedge i_clk) begin
+  if (i_rst) begin
+    dat_cnt <= 0;
+    addr <= 0;
+    ram_we <= 0;
+    ram_d <= 0;
+  end else begin
+    ram_we <= {ram_we, i_ram_we};
+    ram_d <= {ram_d, i_ram_d};
+    if (ram_we[RAM_PIPE]) begin
+      case(addr)
+
+'''
+  return logic_s + accum_s + ram_s + accum2_s + accum3_s
 
 
 

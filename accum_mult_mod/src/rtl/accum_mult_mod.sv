@@ -25,11 +25,11 @@
 
 module accum_mult_mod #(
   parameter BITS,
-  parameter [BITS-1:0] MODULUS,
   parameter A_DSP_W,
   parameter B_DSP_W,
   parameter GRID_BIT,
-  parameter RAM_A_W
+  parameter RAM_A_W,
+  parameter RAM_D_W 
 )(
   input i_clk,
   input i_rst,
@@ -39,25 +39,31 @@ module accum_mult_mod #(
   output logic o_rdy,
   input        [BITS-1:0] i_dat_a,
   input        [BITS-1:0] i_dat_b,
-  output logic [BITS-1:0] o_dat
+  output logic [BITS-1:0] o_dat,
+  input [RAM_D_W-1:0] i_ram_d,
+  input               i_ram_we
 );
 
 localparam int TOT_DSP_W = A_DSP_W+B_DSP_W;
 localparam int NUM_COL = (BITS+A_DSP_W-1)/A_DSP_W;
 localparam int NUM_ROW = (BITS+B_DSP_W-1)/B_DSP_W;
 localparam int MAX_COEF = (2*BITS+GRID_BIT-1)/GRID_BIT;
-localparam int ACCUM_BITS = $clog2(NUM_COL+NUM_ROW)+GRID_BIT+$clog2(BITS/RAM_A_W);
-localparam int PIPE = 7;
+localparam int PIPE = 9;
 
 logic [A_DSP_W*NUM_COL-1:0]             dat_a;
 logic [B_DSP_W*NUM_ROW-1:0]             dat_b;
-logic [A_DSP_W+B_DSP_W-1:0]             mul_grid [NUM_COL][NUM_ROW];
-logic [ACCUM_BITS-1:0]                  accum_grid_o [MAX_COEF-1:0];
-logic [ACCUM_BITS-1:0]                  accum_grid_o_r [MAX_COEF/2-1:0];
-logic [ACCUM_BITS-1:0]                  accum_grid_o_rr [MAX_COEF/2-1:0];
-logic [ACCUM_BITS-1:0]                  accum2_grid_o [MAX_COEF/2-1:0];
-logic [ACCUM_BITS*MAX_COEF/2-1:0]       res_l0_c;
-logic signed [ACCUM_BITS*MAX_COEF/2:0]  res_l1_c;
+(* DONT_TOUCH = "yes" *) logic [A_DSP_W+B_DSP_W-1:0] mul_grid [NUM_COL][NUM_ROW];
+logic [2*BITS:0]     res0_c, res0_r, res0_rr, res1_c, tmp;
+
+// Most of the code is generated
+`include "accum_mult_mod_generated.sv"
+
+always_comb begin
+  tmp = 0;
+  for (int i = 0; i < MAX_COEF; i++)
+    tmp += accum_grid_o[i] << (i*GRID_BIT);
+end
+
 logic [PIPE-1:0]                        val;
 
 genvar gx, gy;
@@ -98,26 +104,23 @@ always_ff @ (posedge i_clk) begin
     end
 end
 
-`include "accum_mult_mod_generated.sv"
-
 // Register lower half accumulator output while we lookup BRAM
 always_ff @ (posedge i_clk)
   for (int i = 0; i < MAX_COEF/2; i++) begin
     accum_grid_o_r[i] <= accum_grid_o[i];
-    accum_grid_o_rr[i] <= accum_grid_o_r[i];
   end
 
-// Now we have two data paths - we propigate carries and add the modulus
 always_comb begin
-  res_l0_c = 0;
+  res0_c = 0;
   for (int i = 0; i < MAX_COEF/2; i++)
-    res_l0_c += accum2_grid_o[i] << (i*GRID_BIT);
-  res_l1_c = res_l0_c - MODULUS;
+    res0_c += accum2_grid_o[i] << (i*GRID_BIT);
 end
 
-always_ff @ (posedge i_clk)
-  //o_dat <= res_l1_c >= 0 ? res_l1_c : res_l0_c;
-  o_dat <= res_l0_c;
-
-
+// We do a second level reduction to get back within MODULUS bits
+always_ff @ (posedge i_clk) begin
+  res0_r <= res0_c;
+  res0_rr <= res0_r;
+  o_dat <= res1_c;
+end
+  
 endmodule

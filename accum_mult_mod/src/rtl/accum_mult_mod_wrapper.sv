@@ -17,12 +17,13 @@
  */
 
 module accum_mult_mod_wrapper #(
-  parameter BITS = 392,
+  parameter BITS = 381 + 1,
   parameter [380:0] MODULUS = 381'h1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab,
   parameter A_DSP_W = 26,
   parameter B_DSP_W = 17,
   parameter GRID_BIT = 32,
-  parameter RAM_A_W = 8
+  parameter RAM_A_W = 8,
+  parameter RAM_D_W = 32
 )(
   input i_clk,
   input i_rst,
@@ -41,7 +42,8 @@ accum_mult_mod #(
   .A_DSP_W  ( A_DSP_W  ),
   .B_DSP_W  ( B_DSP_W  ),
   .GRID_BIT ( GRID_BIT ),
-  .RAM_A_W  ( RAM_A_W  )
+  .RAM_A_W  ( RAM_A_W  ),
+  .RAM_D_W  ( RAM_D_W  )
 )
 accum_mult_mod (
   .i_clk ( i_clk ),
@@ -52,7 +54,9 @@ accum_mult_mod (
   .o_rdy ( o_rdy_r ),
   .i_dat_a ( i_dat_a_r ),
   .i_dat_b ( i_dat_b_r ),
-  .o_dat ( o_dat_r )
+  .o_dat ( o_dat_r ),
+  .i_ram_d (),
+  .i_ram_we ()
 );
 
 logic [BITS-1:0] i_dat_a_r;

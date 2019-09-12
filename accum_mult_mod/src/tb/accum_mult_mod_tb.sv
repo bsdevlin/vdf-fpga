@@ -15,6 +15,7 @@
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 `timescale 1ps/1ps
+`define FASTSIM
 
 module accum_mult_mod_tb ();
 import common_pkg::*;
@@ -23,15 +24,15 @@ localparam CLK_PERIOD = 100;
 
 logic clk, rst;
 
-parameter          BITS = 392;
-parameter [380:0]  MODULUS = 381'h1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab;
-parameter          A_DSP_W = 26;
-parameter          B_DSP_W = 17;
-parameter          GRID_BIT = 32;
-parameter          RAM_A_W = 12;
+parameter            BITS = 381 + 1;
+parameter [BITS-1:0] MODULUS = 'h1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab;
+parameter            A_DSP_W = 26;
+parameter            B_DSP_W = 17;
+parameter            GRID_BIT = 64;
+parameter            RAM_A_W = 10;
+parameter            RAM_D_W = 32;
 
 // This is the max size we can expect on the output
-parameter MAX_IN_BITS = 381;// $clog2(MODULUS) + $clog2((2*BITS-$clog2(MODULUS))/RAM_A_W) + 1;
 
 if_axi_stream #(.DAT_BYTS((2*BITS+7)/8), .CTL_BITS(8)) in_if(clk);
 if_axi_stream #(.DAT_BYTS((BITS+7)/8), .CTL_BITS(8)) out_if(clk);
@@ -62,11 +63,11 @@ always_ff @ (posedge clk)
 
 accum_mult_mod #(
   .BITS     ( BITS     ),
-  .MODULUS  ( MODULUS  ),
   .A_DSP_W  ( A_DSP_W  ),
   .B_DSP_W  ( B_DSP_W  ),
   .GRID_BIT ( GRID_BIT ),
-  .RAM_A_W  ( RAM_A_W  )
+  .RAM_A_W  ( RAM_A_W  ),
+  .RAM_D_W  ( RAM_D_W  )
 )
 accum_mult_mod (
   .i_clk ( clk ),
@@ -77,7 +78,9 @@ accum_mult_mod (
   .o_rdy ( in_if.rdy ),
   .i_dat_a ( in_if.dat[0 +: BITS] ),
   .i_dat_b ( in_if.dat[BITS +: BITS] ),
-  .o_dat ( out_if.dat )
+  .o_dat ( out_if.dat ),
+  .i_ram_d (),
+  .i_ram_we ()
 );
 
 task test_loop();
@@ -94,9 +97,14 @@ begin
   max = 1000;
 
   while (i < max) begin
-    in_a = random_vector((BITS+7)/8) % MODULUS;
-    in_b = random_vector((BITS+7)/8) % MODULUS;
-    expected = (in_a * in_b) % MODULUS;
+    //in_a = (1 << (i+15))-1;
+    //in_b = (1 << (i+15))-1;
+    in_a = random_vector((BITS+7)/8);
+    in_b = random_vector((BITS+7)/8);
+    expected = (in_a * in_b);
+    $display("mul result was 0x%0x", expected);
+    expected = expected % MODULUS;
+    
     fork
       in_if.put_stream({in_b, in_a}, ((BITS*2)+7)/8, i);
       out_if.get_stream(get_dat, get_len, 0);
@@ -104,15 +112,10 @@ begin
 
     out = get_dat;
     
-    /*assert (out >> MAX_IN_BITS == 0) else begin
-      $display("Output was: 0x%0x", out);
-      $fatal(1, "ERROR: More bits than we were expecting");
-    end*/
-    
     t = out / MODULUS;
     out = out % MODULUS;
 
-    assert(out== expected) else begin
+    assert(out == expected) else begin
       $display("Expected: 0x%0x", expected);
       $display("Was:      0x%0x (t=%0d)", out, t);
       $fatal(1, "ERROR: Output did not match");
