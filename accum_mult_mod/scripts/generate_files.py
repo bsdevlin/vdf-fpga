@@ -178,7 +178,7 @@ always_ff @ (posedge i_clk) accum_grid_o[{}] <= accum_o_c_{} + accum_o_s_{};
   for idx, i in enumerate(ram_addr_bits):
     ram_s1 += '''
 logic [{}:0]    mod_ram_{}_a;
-logic [{}:0]    mod_ram_{}_q;
+(* DONT_TOUCH = "yes" *) logic [{}:0]    mod_ram_{}_q;
 logic [{}:0]    mod_ram_{}_d;
 logic [{}:0]    mod_ram_{}_ram [{}];
 always_ff @ (posedge i_clk) begin
