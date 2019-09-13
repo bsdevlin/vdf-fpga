@@ -32,6 +32,8 @@ B_DSP_W = 17
 GRID_BIT = 64 #32
 RAM_A_W = 10
 
+URAM_PERCENT = 50
+
 RES_W = A_DSP_W+B_DSP_W
 NUM_COL = (BITS+A_DSP_W-1)//A_DSP_W;
 NUM_ROW = (BITS+B_DSP_W-1)//B_DSP_W;
@@ -176,18 +178,19 @@ always_ff @ (posedge i_clk) accum_grid_o[{}] <= accum_o_c_{} + accum_o_s_{};
   # Add the RAMs
   ram_s1 = ''
   for idx, i in enumerate(ram_addr_bits):
+    uram_s = '(* ram_style="ultra" *)' if URAM_PERCENT > 100*idx/len(ram_addr_bits) else ''
     ram_s1 += '''
 logic [{}:0]    mod_ram_{}_a;
 (* DONT_TOUCH = "yes" *) logic [{}:0]    mod_ram_{}_q;
 logic [{}:0]    mod_ram_{}_d;
-logic [{}:0]    mod_ram_{}_ram [{}];
+{}logic [{}:0]    mod_ram_{}_ram [{}];
 always_ff @ (posedge i_clk) begin
   mod_ram_{}_q <= mod_ram_{}_ram[mod_ram_{}_a];
 end
 `ifdef SIMULATION
   initial $readmemh( "mod_ram_{}.mem", mod_ram_{}_ram);
 `endif
-'''.format(RAM_A_W-1, idx, MODULUS.bit_length()-1, idx, MODULUS.bit_length()-1, idx,MODULUS.bit_length()-1, idx, 1 << RAM_A_W, idx, idx, idx, idx, idx)
+'''.format(RAM_A_W-1, idx, MODULUS.bit_length()-1, idx, MODULUS.bit_length()-1, idx, uram_s, MODULUS.bit_length()-1, idx, 1 << RAM_A_W, idx, idx, idx, idx, idx)
 
   # We now generate the tree adders to sum the reduction values with the accum_grid_o values
   accum2_s = '\n'

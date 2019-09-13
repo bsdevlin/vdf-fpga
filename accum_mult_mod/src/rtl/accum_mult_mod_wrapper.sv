@@ -78,9 +78,9 @@ accum_mult_mod (
   .i_dat_a ( i_dat_a_r ),
   .i_dat_b ( i_dat_b_r ),
   .o_dat   ( o_dat_r   ),
-  .i_ram_d  ( i_ram_d_r  ),
-  .i_ram_we ( i_ram_we_r ),
-  .i_ram_se ( i_ram_se_r )
+  .i_ram_d  ( ram_d_r  ),
+  .i_ram_we ( ram_we_r ),
+  .i_ram_se ( ram_se_r )
 );
 
 endmodule
