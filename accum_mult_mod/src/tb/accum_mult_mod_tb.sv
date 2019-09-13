@@ -15,7 +15,7 @@
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 `timescale 1ps/1ps
-`define FASTSIM
+`define SIMULATION
 
 module accum_mult_mod_tb ();
 import common_pkg::*;
@@ -80,7 +80,8 @@ accum_mult_mod (
   .i_dat_b ( in_if.dat[BITS +: BITS] ),
   .o_dat ( out_if.dat ),
   .i_ram_d (),
-  .i_ram_we ()
+  .i_ram_we (),
+  .i_ram_se ()
 );
 
 task test_loop();

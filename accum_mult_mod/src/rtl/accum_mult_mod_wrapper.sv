@@ -33,12 +33,35 @@ module accum_mult_mod_wrapper #(
   output logic o_rdy,
   input        [BITS-1:0] i_dat_a,
   input        [BITS-1:0] i_dat_b,
-  output logic [BITS-1:0] o_dat
+  output logic [BITS-1:0] o_dat,
+  input [RAM_D_W-1:0] i_ram_d,
+  input               i_ram_we,
+  input               i_ram_se
 );
+
+logic [BITS-1:0] i_dat_a_r;
+logic [BITS-1:0] i_dat_b_r;
+logic [BITS-1:0] o_dat_r;
+logic i_val_r, i_rdy_r, o_val_r, o_rdy_r;
+logic [RAM_D_W-1:0] ram_d_r;
+logic               ram_we_r;
+logic               ram_se_r;
+
+always_ff @ (posedge i_clk) begin
+  i_dat_a_r <= i_dat_a;
+  i_dat_b_r <= i_dat_b;
+  o_dat <= o_dat_r;
+  i_val_r <= i_val;
+  o_rdy <= o_rdy_r;
+  i_rdy_r <= i_rdy;
+  o_val <= o_val_r;
+  ram_d_r <= i_ram_d;
+  ram_we_r <= i_ram_we;
+  ram_se_r <= i_ram_se;
+end
 
 accum_mult_mod #(
   .BITS     ( BITS     ),
-  .MODULUS  ( MODULUS  ),
   .A_DSP_W  ( A_DSP_W  ),
   .B_DSP_W  ( B_DSP_W  ),
   .GRID_BIT ( GRID_BIT ),
@@ -54,24 +77,10 @@ accum_mult_mod (
   .o_rdy ( o_rdy_r ),
   .i_dat_a ( i_dat_a_r ),
   .i_dat_b ( i_dat_b_r ),
-  .o_dat ( o_dat_r ),
-  .i_ram_d (),
-  .i_ram_we ()
+  .o_dat   ( o_dat_r   ),
+  .i_ram_d  ( i_ram_d_r  ),
+  .i_ram_we ( i_ram_we_r ),
+  .i_ram_se ( i_ram_se_r )
 );
-
-logic [BITS-1:0] i_dat_a_r;
-logic [BITS-1:0] i_dat_b_r;
-logic [BITS-1:0] o_dat_r;
-logic i_val_r, i_rdy_r, o_val_r, o_rdy_r;
-
-always_ff @ (posedge i_clk) begin
-  i_dat_a_r <= i_dat_a;
-  i_dat_b_r <= i_dat_b;
-  o_dat <= o_dat_r;
-  i_val_r <= i_val;
-  o_rdy <= o_rdy_r;
-  i_rdy_r <= i_rdy;
-  o_val <= o_val_r;
-end
 
 endmodule

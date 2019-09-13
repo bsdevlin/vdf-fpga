@@ -179,12 +179,15 @@ always_ff @ (posedge i_clk) accum_grid_o[{}] <= accum_o_c_{} + accum_o_s_{};
     ram_s1 += '''
 logic [{}:0]    mod_ram_{}_a;
 logic [{}:0]    mod_ram_{}_q;
+logic [{}:0]    mod_ram_{}_d;
 logic [{}:0]    mod_ram_{}_ram [{}];
 always_ff @ (posedge i_clk) begin
   mod_ram_{}_q <= mod_ram_{}_ram[mod_ram_{}_a];
 end
-initial $readmemh( "mod_ram_{}.mem", mod_ram_{}_ram);
-'''.format(RAM_A_W-1, idx, MODULUS.bit_length()-1, idx, MODULUS.bit_length()-1, idx, 1 << RAM_A_W, idx, idx, idx, idx, idx)
+`ifdef SIMULATION
+  initial $readmemh( "mod_ram_{}.mem", mod_ram_{}_ram);
+`endif
+'''.format(RAM_A_W-1, idx, MODULUS.bit_length()-1, idx, MODULUS.bit_length()-1, idx,MODULUS.bit_length()-1, idx, 1 << RAM_A_W, idx, idx, idx, idx, idx)
 
   # We now generate the tree adders to sum the reduction values with the accum_grid_o values
   accum2_s = '\n'
@@ -249,27 +252,45 @@ logic [{}:0]                  accum2_grid_o [{}];
 '''.format(max(max_bits_l)-1, MAX_COEF, max(max_bits_l)-1, MAX_COEF//2, max(max_bits_l)-1, MAX_COEF//2)
 
   # Add logic for writing to memory
+  # Make long scan chain, width of RAM_D_W
   ram_write_s = '''
 localparam int RAM_PIPE = 4;
-logic [RAM_PIPE:0][$clog2({})-1:0] addr;
-logic [RAM_PIPE:0][RAM_D_W-1:0]    ram_d;
-logic [RAM_PIPE:0]                 ram_we;
-logic [{}:0]                         dat_cnt;
+logic [RAM_PIPE:0][RAM_A_W-1:0] addr;
+logic [RAM_PIPE:0][RAM_D_W-1:0] ram_d;
+logic [RAM_PIPE:0]              ram_we;
+logic [RAM_PIPE:0]              ram_se;
 
 always_ff @ (posedge i_clk) begin
   if (i_rst) begin
-    dat_cnt <= 0;
     addr <= 0;
     ram_we <= 0;
+    ram_se <= 0;
     ram_d <= 0;
   end else begin
     ram_we <= {ram_we, i_ram_we};
-    ram_d <= {ram_d, i_ram_d};
+    ram_d  <= {ram_d, i_ram_d};
+    ram_se <= {ram_se, i_ram_se};
     if (ram_we[RAM_PIPE]) begin
-      case(addr)
-
+      addr <= addr + 1;'''
+  for idx, i in enumerate(ram_addr_bits):
+    ram_write_s+= '''
+      mod_ram_{}_ram[addr] <= mod_ram_{}_d;'''.format(idx, idx)
+  ram_write_s += '''
+    end
 '''
-  return logic_s + accum_s + ram_s + accum2_s + accum3_s
+  ram_write_s += '''
+    if (ram_se[RAM_PIPE]) begin'''
+  for idx, i in enumerate(ram_addr_bits):
+    previous_ram = "ram_d[RAM_PIPE]" if idx == 0 else "mod_ram_{}_d[{}:({}%RAM_D_W)]".format(idx-1, MODULUS.bit_length()-1, MODULUS.bit_length())
+    ram_write_s += '''
+      mod_ram_{}_d <= {{mod_ram_{}_d, {}}};'''.format(idx, idx, previous_ram)
+
+  ram_write_s += '''
+    end
+  end
+end
+'''    
+  return logic_s + accum_s + ram_s + accum2_s + accum3_s + ram_write_s
 
 
 

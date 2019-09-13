@@ -41,7 +41,8 @@ module accum_mult_mod #(
   input        [BITS-1:0] i_dat_b,
   output logic [BITS-1:0] o_dat,
   input [RAM_D_W-1:0] i_ram_d,
-  input               i_ram_we
+  input               i_ram_we,
+  input               i_ram_se
 );
 
 localparam int TOT_DSP_W = A_DSP_W+B_DSP_W;
