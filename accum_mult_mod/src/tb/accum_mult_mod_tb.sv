@@ -24,7 +24,7 @@ localparam CLK_PERIOD = 100;
 
 logic clk, rst;
 
-parameter            BITS = 381 + 1;
+parameter            BITS = 381;
 parameter [BITS-1:0] MODULUS = 'h1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab;
 parameter            A_DSP_W = 26;
 parameter            B_DSP_W = 17;
@@ -47,14 +47,6 @@ initial begin
   forever #CLK_PERIOD clk = ~clk;
 end
 
-always_comb begin
-  out_if.sop = 1;
-  out_if.eop = 1;
-  out_if.ctl = 0;
-  out_if.mod = 0;
-  out_if.err = 0;
-end
-
 // Check for errors
 always_ff @ (posedge clk)
   if (out_if.val && out_if.err)
@@ -62,7 +54,9 @@ always_ff @ (posedge clk)
 
 
 accum_mult_mod #(
-  .BITS     ( BITS     ),
+  .DAT_BITS ( BITS     ),
+  .MODULUS  ( MODULUS  ),
+  .CTL_BITS ( 8        ),
   .A_DSP_W  ( A_DSP_W  ),
   .B_DSP_W  ( B_DSP_W  ),
   .GRID_BIT ( GRID_BIT ),
@@ -72,13 +66,8 @@ accum_mult_mod #(
 accum_mult_mod (
   .i_clk ( clk ),
   .i_rst ( rst ),
-  .i_val ( in_if.val  ),
-  .i_rdy ( out_if.rdy ),
-  .o_val ( out_if.val ),
-  .o_rdy ( in_if.rdy ),
-  .i_dat_a ( in_if.dat[0 +: BITS] ),
-  .i_dat_b ( in_if.dat[BITS +: BITS] ),
-  .o_dat ( out_if.dat ),
+  .i_mul ( in_if  ),
+  .o_mul ( out_if ),
   .i_ram_d (),
   .i_ram_we (),
   .i_ram_se ()
@@ -98,21 +87,18 @@ begin
   max = 1000;
 
   while (i < max) begin
-    //in_a = (1 << (i+15))-1;
-    //in_b = (1 << (i+15))-1;
     in_a = random_vector((BITS+7)/8);
     in_b = random_vector((BITS+7)/8);
     expected = (in_a * in_b);
-    $display("mul result was 0x%0x", expected);
     expected = expected % MODULUS;
-    
+
     fork
       in_if.put_stream({in_b, in_a}, ((BITS*2)+7)/8, i);
       out_if.get_stream(get_dat, get_len, 0);
     join
 
     out = get_dat;
-    
+
     t = out / MODULUS;
     out = out % MODULUS;
 

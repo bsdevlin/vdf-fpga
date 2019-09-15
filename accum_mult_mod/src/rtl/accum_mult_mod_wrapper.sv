@@ -17,7 +17,7 @@
  */
 
 module accum_mult_mod_wrapper #(
-  parameter BITS = 381 + 1,
+  parameter BITS = 381,
   parameter [380:0] MODULUS = 381'h1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab,
   parameter A_DSP_W = 26,
   parameter B_DSP_W = 17,
@@ -39,29 +39,30 @@ module accum_mult_mod_wrapper #(
   input               i_ram_se
 );
 
-logic [BITS-1:0] i_dat_a_r;
-logic [BITS-1:0] i_dat_b_r;
-logic [BITS-1:0] o_dat_r;
-logic i_val_r, i_rdy_r, o_val_r, o_rdy_r;
 logic [RAM_D_W-1:0] ram_d_r;
 logic               ram_we_r;
 logic               ram_se_r;
 
+if_axi_stream #(.DAT_BYTS(BITS*2), .CTL_BITS(8)) in_if(i_clk);
+if_axi_stream #(.DAT_BYTS(BITS), .CTL_BITS(8)) out_if(i_clk);
+
 always_ff @ (posedge i_clk) begin
-  i_dat_a_r <= i_dat_a;
-  i_dat_b_r <= i_dat_b;
-  o_dat <= o_dat_r;
-  i_val_r <= i_val;
-  o_rdy <= o_rdy_r;
-  i_rdy_r <= i_rdy;
-  o_val <= o_val_r;
+  in_if.dat[0+:BITS] <= i_dat_a;
+  in_if.dat[BITS+:BITS] <= i_dat_b;
+  o_dat <= out_if.dat;
+  in_if.val <= i_val;
+  o_rdy <= in_if.rdy;
+  out_if.rdy <= i_rdy;
+  o_val <= out_if.val;
   ram_d_r <= i_ram_d;
   ram_we_r <= i_ram_we;
   ram_se_r <= i_ram_se;
 end
 
 accum_mult_mod #(
-  .BITS     ( BITS     ),
+  .DAT_BITS ( BITS     ),
+  .CTL_BITS ( 8        ),
+  .MODULUS  ( MODULUS  ),
   .A_DSP_W  ( A_DSP_W  ),
   .B_DSP_W  ( B_DSP_W  ),
   .GRID_BIT ( GRID_BIT ),
@@ -71,13 +72,8 @@ accum_mult_mod #(
 accum_mult_mod (
   .i_clk ( i_clk ),
   .i_rst ( i_rst ),
-  .i_val ( i_val_r ),
-  .i_rdy ( i_rdy_r ),
-  .o_val ( o_val_r ),
-  .o_rdy ( o_rdy_r ),
-  .i_dat_a ( i_dat_a_r ),
-  .i_dat_b ( i_dat_b_r ),
-  .o_dat   ( o_dat_r   ),
+  .i_mul ( in_if ),
+  .o_mul ( out_if ),
   .i_ram_d  ( ram_d_r  ),
   .i_ram_we ( ram_we_r ),
   .i_ram_se ( ram_se_r )
