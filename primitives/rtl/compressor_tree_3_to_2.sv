@@ -29,7 +29,7 @@ module compressor_tree_3_to_2
     output logic [BIT_LEN-1:0] C,
     output logic [BIT_LEN-1:0] S
    );
-
+`define FASTSIM
 `ifdef FASTSIM
    // This is intended for simulation only to improve compile and run time
    always_comb begin

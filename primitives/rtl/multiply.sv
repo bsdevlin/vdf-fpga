@@ -66,9 +66,13 @@ module multiply
     input  logic                       clk,
     input  logic [A_BIT_LEN-1:0]       A[NUM_ELEMENTS],
     input  logic [B_BIT_LEN-1:0]       B[NUM_ELEMENTS],
-    output logic [OUT_BIT_LEN-1:0]     Cout[NUM_ELEMENTS*2],
-    output logic [OUT_BIT_LEN-1:0]     S[NUM_ELEMENTS*2]
+    output logic [B_BIT_LEN-1:0]       out[2*NUM_ELEMENTS]
    );
+   
+   
+   logic [OUT_BIT_LEN-1:0]     Cout[NUM_ELEMENTS*2];
+   logic [OUT_BIT_LEN-1:0]     S[NUM_ELEMENTS*2];
+   logic [OUT_BIT_LEN-1:0]     res[NUM_ELEMENTS*2];
 
    localparam int GRID_PAD_SHORT   = EXTRA_TREE_BITS;
    localparam int GRID_PAD_LONG    = (COL_BIT_LEN - WORD_LEN) +
@@ -95,27 +99,6 @@ module multiply
       end
    endgenerate
 
-   // Sort results into columns, split into lower and upper slices
-   // Fills a parallelogram in the grid array
-   // Starts with a single entry in a column, grows by two until the middle
-   // Peaks in the middle two columns with (NUM_ELEMENTS * 2) - 1 entries each
-   // Then declines two per column until the end with a single entry
-   // generate
-   //    for (i=0; i<NUM_ELEMENTS; i=i+1) begin : grid_row
-   //       for (j=0; j<NUM_ELEMENTS; j=j+1) begin : grid_col
-   //          always_comb begin
-   //             grid[(i+j)][(2*i)]     =
-   //                {{GRID_PAD_LONG{1'b0}},
-   //                 mul_result[(NUM_ELEMENTS*i)+j][WORD_LEN-1:0]};
-   //             grid[(i+j+1)][((2*i)+1)] =
-   //                {{GRID_PAD_SHORT{1'b0}},
-   //                 mul_result[(NUM_ELEMENTS*i)+j][MUL_OUT_BIT_LEN-1:WORD_LEN]};
-   //          end
-   //       end
-   //    end
-   // endgenerate
-
-   // TODO: determine why the code above fails with Vivado
    int ii, jj;
    always_comb begin
       for (ii=0; ii<NUM_ELEMENTS*2; ii=ii+1) begin
@@ -139,16 +122,19 @@ module multiply
    // Sum each column using compressor tree
    generate
       // The first and last columns have only one entry, return in S
-      always_ff @(posedge clk) begin
-         Cout[0][OUT_BIT_LEN-1:0]                  <= '0;
-         Cout[(NUM_ELEMENTS*2)-1][OUT_BIT_LEN-1:0] <= '0;
+      always_comb begin
+         Cout[0][OUT_BIT_LEN-1:0]                  = '0;
+         Cout[(NUM_ELEMENTS*2)-1][OUT_BIT_LEN-1:0] = '0;
 
-         S[0][OUT_BIT_LEN-1:0]                     <= 
+         S[0][OUT_BIT_LEN-1:0]                     = 
             grid[0][0][OUT_BIT_LEN-1:0];
 
-         S[(NUM_ELEMENTS*2)-1][OUT_BIT_LEN-1:0]    <= 
+         S[(NUM_ELEMENTS*2)-1][OUT_BIT_LEN-1:0]    = 
             grid[(NUM_ELEMENTS*2)-1][(NUM_ELEMENTS*2)-1][OUT_BIT_LEN-1:0];
-      end
+            
+         res[0] = Cout[0] + S[0];
+         res[(NUM_ELEMENTS*2)-1] = Cout[(NUM_ELEMENTS*2)-1] + S[(NUM_ELEMENTS*2)-1];
+      end    
 
       // Loop through grid parallelogram
       // The number of elements increases up to the midpoint then decreases
@@ -174,10 +160,14 @@ module multiply
                .S(S_col)
             );
 
-         always_ff @(posedge clk) begin
-            Cout[i][OUT_BIT_LEN-1:0] <= Cout_col[OUT_BIT_LEN-1:0];
-            S[i][OUT_BIT_LEN-1:0]    <= S_col[OUT_BIT_LEN-1:0];
+         always_comb begin
+            res[i] = Cout_col[OUT_BIT_LEN-1:0] + S_col[OUT_BIT_LEN-1:0];
          end
       end
    endgenerate
+   
+   always_ff @ (posedge clk) 
+     for (int ii = 0; ii < NUM_ELEMENTS*2; ii++)
+       out[ii] <= res[ii][WORD_LEN-1:0] + (ii > 0 ? res[ii-1][OUT_BIT_LEN-1:WORD_LEN] : 0);
+   
 endmodule
