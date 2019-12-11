@@ -37,6 +37,7 @@ redun0_t mul_a, mul_b, add_o;
 redun1_t mul_out1, tmp;
 
 logic [1:0] cnt;
+logic s_carry;
 enum {IDLE, MUL0, MUL1, MUL2, ADD0} state;
 
 // Assign input to multiplier
@@ -82,6 +83,7 @@ always_ff @ (posedge i_clk) begin
     for (int i = 0; i< NUM_WRDS*2; i++) begin
       tmp[i] <= 0;
     end
+    s_carry <= 0;
   end else begin
     o_val <= 0;
     cnt <= cnt + 1;
@@ -90,10 +92,11 @@ always_ff @ (posedge i_clk) begin
         cnt <= 0;
         // Waiting for valid
       end
-      MUL0: begin // Need to check for overflow.
+      MUL0: begin
         if(cnt == MULT_CYCLES) begin
           state <= MUL1;
           cnt <= 0;
+          s_carry <= speculative_carry(get_l_wrds(mul_out1));
         end
       end
       MUL1: begin
@@ -102,6 +105,7 @@ always_ff @ (posedge i_clk) begin
         if(cnt == MULT_CYCLES) begin
           state <= MUL2;
           cnt <= 0;
+          s_carry <= speculative_carry(get_l_wrds(mul_out1));
         end
       end
       MUL2: begin

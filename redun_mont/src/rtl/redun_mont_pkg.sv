@@ -30,11 +30,17 @@ package redun_mont_pkg;
   localparam int MONT_REDUCE_BITS = DAT_BITS;
   localparam [DAT_BITS-1:0] MONT_FACTOR = 'h135faf5cb1d1180cf031096710f9d7df19c33c4c4fb744c2a4d0fb04a49015272417ea53b2d8a463736bedc12e78b10d414648af2ae714a5cfffbca8bce7775c3e4c0b7dada4446b97fb8838e56d1321f3e61130c64141bb301eb30018c44b123cc3c1bc4671ce9c166d6a6e4516a7d3ad176b9cf85260839f4d817a13527b910fa9e9bd;
   localparam [DAT_BITS-1:0] MONT_RECIP_SQ = 'h2345bc86977e99b4fa1385f6363d8917091785bcb5532e401640ba1692b6fe2a7a20cc1cf9a442bdbf3aaf7c7eb6d42ad681bdedeb20fe319afbc165b2a5af71a7e3eb301f25886eb962edb34f089e72f4ae246dcab527f22c6fe03dca5d25700b8de55ee203cc59ac0ef2bba574b85200a89174fadc85618faaca751d1ef017; // Required for conversion into Montgomery form
-
+  localparam int SPECULATIVE_CARRY_WRDS = 4;
 
   typedef logic [WRD_BITS:0] redun0_t [NUM_WRDS];
   typedef logic [WRD_BITS:0] redun1_t [NUM_WRDS*2];
   typedef logic [DAT_BITS-1:0] fe_t;
+
+  function speculative_carry(input redun1_t in); // Do we need to look at redundant bits?
+    speculative_carry = 0;
+    for (int i = NUM_WRDS-1-SPECULATIVE_CARRY_WRDS; i < NUM_WRDS; i++)
+      if (&in[i][WRD_BITS-1:0]) speculative_carry = 1;
+  endfunction
 
   function redun0_t get_l_wrds(input redun1_t in);
     for (int i = 0; i < NUM_WRDS; i++)
