@@ -56,20 +56,20 @@ initial begin
   in_val = 0;
   in = to_redun(0);
   #(40*CLK_PERIOD);
-  a = 2;  
+  a = 2;
   a_ = to_mont(a);
   in = to_redun(a_);
 
-    
+
   @(posedge clk);
   in_val = 1;
   @(posedge clk);
   in_val = 0;
   in = to_redun(0);
-  
+
   for (int i = 0; i < 1000; i++) begin
     while (out_val == 0) @(posedge clk);
-  
+
     $display("#%0d Expected, Got:\n0x%0x\n0x%0x", i, fe_mul_mont(a_, a_), from_redun(out));
     assert (from_redun(out) == fe_mul_mont(a_, a_)) else $fatal("ERROR -  wrong");
     a_ = fe_mul_mont(a_, a_);

@@ -30,6 +30,7 @@
                                            |----------------------------------|
       -------------------------------------------------------------------------
 
+ctl == 0
        Col
    Row     7        6        5        4        3        2        1        0
     0                                       A00B03L  A00B02L  A00B01L  A00B00L
@@ -42,60 +43,79 @@
     7 + A03B03H  A03B02H  A03B01H  A03B00H
       -------------------------------------------------------------------------
          C7,S7    C6,S6    C5,S5    C4,S4    C3,S3    C2,S2    C1,S1    C0,S0
+
+
+ctl==0
+       Col
+   Row          5        4        3        2        1        0
+    0                                  A00B02L  A00B01L  A00B00L
+    1                            x     A00B01H  A00B00H
+    2                            x     A01B01L  A01B00L
+    3                   x        x     A01B00H
+    4                   x        x     A02B00L
+    5          x        x        x
+      ------------------------------------------------------------
+             C5,S5    C4,S4    C3,S3    C2,S2    C1,S1    C0,S0
+
+ctl==1
+       Col
+   Row          5        4        3        2        1        0
+    0                                                             A00B02L  x  x
+    1                                                    A00B02H    x      x
+    2                                                    A01B02L  A01B01L  x
+    3                                           A01B02H  A01B01H    x
+    4                                           A02B02L  A02B01L  A02B00L
+    5                                  A02B02H  A02B01H  A02B00H
+      ------------------------------------------------------------
+             C5,S5    C4,S4    C3,S3    C2,S2    C1,S1    C0,S0
+
 */
 
-module multiply
+module half_multiply
    #(
      parameter int NUM_ELEMENTS    = 33,
-     parameter int A_BIT_LEN       = 17,
-     parameter int B_BIT_LEN       = 17,
+     parameter int DSP_BIT_LEN     = 17,
      parameter int WORD_LEN        = 16,
-
-     parameter int MUL_OUT_BIT_LEN  = A_BIT_LEN + B_BIT_LEN,
-     parameter int COL_BIT_LEN      = MUL_OUT_BIT_LEN - WORD_LEN,
-
-     // Extra bits needed for accumulation depends on bit width
-     // If one operand is larger than the other, then only need enough extra
-     //  bits based on number of larger operands.
-     parameter int EXTRA_TREE_BITS  = (COL_BIT_LEN > WORD_LEN) ?
-                                       $clog2(NUM_ELEMENTS)    :
-                                       $clog2(NUM_ELEMENTS*2),
-     parameter int OUT_BIT_LEN      = COL_BIT_LEN + EXTRA_TREE_BITS,
-     parameter USE_ADDER = "YES"
+     parameter int NUM_ELEMENTS_OUT = NUM_ELEMENTS*2
     )
    (
     input  logic                       clk,
-    input  logic [A_BIT_LEN-1:0]       A[NUM_ELEMENTS],
-    input  logic [B_BIT_LEN-1:0]       B[NUM_ELEMENTS],
-    output logic [B_BIT_LEN-1:0]       out[2*NUM_ELEMENTS]
+    input  logic                       ctl, // 0 = lower half, 1 = upper half
+    input  logic [DSP_BIT_LEN-1:0]     A[NUM_ELEMENTS],
+    input  logic [DSP_BIT_LEN-1:0]     B[NUM_ELEMENTS],
+    output logic [DSP_BIT_LEN-1:0]     out[NUM_ELEMENTS_OUT]
    );
 
+   parameter int OUT_BIT_LEN      = 2*DSP_BIT_LEN + $clog2(2*NUM_ELEMENTS);
 
-   logic [OUT_BIT_LEN-1:0]     Cout[NUM_ELEMENTS*2];
-   logic [OUT_BIT_LEN-1:0]     S[NUM_ELEMENTS*2];
-   logic [OUT_BIT_LEN-1:0]     res[NUM_ELEMENTS*2];
-
-   localparam int GRID_PAD_SHORT   = EXTRA_TREE_BITS;
-   localparam int GRID_PAD_LONG    = (COL_BIT_LEN - WORD_LEN) +
-                                     EXTRA_TREE_BITS;
-
-   logic [MUL_OUT_BIT_LEN-1:0] mul_result[NUM_ELEMENTS*NUM_ELEMENTS];
-   logic [OUT_BIT_LEN-1:0]     grid[NUM_ELEMENTS*2][NUM_ELEMENTS*2];
+   logic [OUT_BIT_LEN-1:0]     res[NUM_ELEMENTS_OUT];
 
 
-   // Instantiate all the multipliers, requires NUM_ELEMENTS^2 muls
+   logic [DSP_BIT_LEN*2-1:0] mul_result[NUM_ELEMENTS*NUM_ELEMENTS];
+   logic [OUT_BIT_LEN-1:0]   grid[NUM_ELEMENTS*2][NUM_ELEMENTS*2];
+
+   logic ctl_r;
+
+   always_ff @ (posedge clk) ctl_r <= ctl;
+
+   // Instantiate half the multipliers
+   // Swap order if we only need top half
    genvar i, j;
    generate
       for (i=0; i<NUM_ELEMENTS; i=i+1) begin : mul_A
          for (j=0; j<NUM_ELEMENTS; j=j+1) begin : mul_B
-            multiplier #(.A_BIT_LEN(A_BIT_LEN),
-                         .B_BIT_LEN(B_BIT_LEN)
+           if (i+j < NUM_ELEMENTS_OUT) begin
+            multiplier #(.A_BIT_LEN(DSP_BIT_LEN),
+                         .B_BIT_LEN(DSP_BIT_LEN)
                         ) multiplier (
-                                      .clk(clk),
-                                      .A(A[i][A_BIT_LEN-1:0]),
-                                      .B(B[j][B_BIT_LEN-1:0]),
-                                      .P(mul_result[(NUM_ELEMENTS*i)+j])
-                                     );
+                          .clk(clk),
+                          .A(ctl == 0 ? A[i] : A[NUM_ELEMENTS-i -1]),
+                          .B(ctl == 0 ? B[j] : B[NUM_ELEMENTS-j-1]),
+                          .P(mul_result[(NUM_ELEMENTS*i)+j])
+                         );
+            end else begin
+              always_comb mul_result[(NUM_ELEMENTS*i)+j] = 0;
+            end
          end
       end
    endgenerate
@@ -110,62 +130,40 @@ module multiply
 
       for (ii=0; ii<NUM_ELEMENTS; ii=ii+1) begin : grid_row
          for (jj=0; jj<NUM_ELEMENTS; jj=jj+1) begin : grid_col
-            grid[(ii+jj)][(2*ii)]     =
-                {{GRID_PAD_LONG{1'b0}},
-                 mul_result[(NUM_ELEMENTS*ii)+jj][WORD_LEN-1:0]};
-            grid[(ii+jj+1)][((2*ii)+1)] =
-                {{GRID_PAD_SHORT{1'b0}},
-                 mul_result[(NUM_ELEMENTS*ii)+jj][MUL_OUT_BIT_LEN-1:WORD_LEN]};
+
+            if (ii+jj < NUM_ELEMENTS_OUT) begin
+              if (ctl_r == 0) begin
+                grid[(ii+jj)][(2*ii)]       = mul_result[(NUM_ELEMENTS*ii)+jj][WORD_LEN-1 : 0];
+                grid[(ii+jj+1)][((2*ii)+1)] = mul_result[(NUM_ELEMENTS*ii)+jj][2*DSP_BIT_LEN-1 : WORD_LEN];
+              end else begin
+                grid[(ii+jj+1)][((2*ii)+1)]        = mul_result[(NUM_ELEMENTS*ii)+jj][WORD_LEN-1 : 0];
+                grid[(ii+jj)][(2*ii)]              = mul_result[(NUM_ELEMENTS*ii)+jj][2*DSP_BIT_LEN-1 : WORD_LEN];
+              end
+            end
+
          end
       end
    end
 
    // Sum each column using compressor tree
    generate
-      // The first and last columns have only one entry, return in S
-      always_comb begin
-         Cout[0][OUT_BIT_LEN-1:0]                  = '0;
-         Cout[(NUM_ELEMENTS*2)-1][OUT_BIT_LEN-1:0] = '0;
-
-         S[0][OUT_BIT_LEN-1:0]                     =
-            grid[0][0][OUT_BIT_LEN-1:0];
-
-         S[(NUM_ELEMENTS*2)-1][OUT_BIT_LEN-1:0]    =
-            grid[(NUM_ELEMENTS*2)-1][(NUM_ELEMENTS*2)-1][OUT_BIT_LEN-1:0];
-
-         res[0] = Cout[0] + S[0];
-         res[(NUM_ELEMENTS*2)-1] = Cout[(NUM_ELEMENTS*2)-1] + S[(NUM_ELEMENTS*2)-1];
-      end
 
       // Loop through grid parallelogram
       // The number of elements increases up to the midpoint then decreases
       // Starting grid row is 0 for the first half, decreases by 2 thereafter
       // Instantiate compressor tree per column
-      for (i=1; i<(NUM_ELEMENTS*2)-1; i=i+1) begin : col_sums
+
+      always_comb begin
+        res[0] = grid[0][0];
+      end
+
+      for (i=1; i<NUM_ELEMENTS_OUT; i=i+1) begin : col_sums
          localparam integer CUR_ELEMENTS = (i < NUM_ELEMENTS) ?
                                               ((i*2)+1) :
                                               ((NUM_ELEMENTS*4) - 1 - (i*2));
          localparam integer GRID_INDEX   = (i < NUM_ELEMENTS) ?
                                               0 :
                                               (((i - NUM_ELEMENTS) * 2) + 1);
-
-         logic [OUT_BIT_LEN-1:0] Cout_col;
-         logic [OUT_BIT_LEN-1:0] S_col;
-
-      if (USE_ADDER == "NO") begin: GEN_TREE
-         compressor_tree_3_to_2 #(.NUM_ELEMENTS(CUR_ELEMENTS),
-                                  .BIT_LEN(OUT_BIT_LEN)
-                                 )
-            compressor_tree_3_to_2 (
-               .terms(grid[i][GRID_INDEX:(GRID_INDEX + CUR_ELEMENTS - 1)]),
-               .C(Cout_col),
-               .S(S_col)
-            );
-
-           always_comb begin
-              res[i] = Cout_col[OUT_BIT_LEN-1:0] + S_col[OUT_BIT_LEN-1:0];
-           end
-         end else begin
 
            adder_tree_2_to_1 #(
              .NUM_ELEMENTS(CUR_ELEMENTS),
@@ -176,12 +174,15 @@ module multiply
              .S(res[i])
            );
 
-         end
       end
    endgenerate
 
+   // TODO check how far we should go
    always_ff @ (posedge clk)
-     for (int ii = 0; ii < NUM_ELEMENTS*2; ii++)
-       out[ii] <= res[ii][WORD_LEN-1:0] + (ii > 0 ? res[ii-1][OUT_BIT_LEN-1:WORD_LEN] : 0);
+     for (int ii = 0; ii < NUM_ELEMENTS_OUT; ii++)
+       if (ctl_r == 0)
+         out[ii] <= res[ii][WORD_LEN-1:0] + (ii > 0 ? res[ii-1][OUT_BIT_LEN-1:WORD_LEN] : 0);
+       else
+         out[ii] <= res[ii][WORD_LEN-1:0] + (ii < NUM_ELEMENTS_OUT-1 ? res[ii+1][OUT_BIT_LEN-1:WORD_LEN] : 0);
 
 endmodule

@@ -40,7 +40,7 @@ module multiplier
     input  logic                       clk,
     input  logic [A_BIT_LEN-1:0]       A,
     input  logic [B_BIT_LEN-1:0]       B,
-    output logic [MUL_OUT_BIT_LEN-1:0] P
+    (* dont_touch = "true" *) output logic [MUL_OUT_BIT_LEN-1:0] P
    );
 
    logic [MUL_OUT_BIT_LEN-1:0] P_result;

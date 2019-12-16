@@ -33,8 +33,11 @@ localparam OUT_BIT_LEN = COL_BIT_LEN + $clog2(NUM_WRDS);
 
 localparam MULT_CYCLES = 2'd1;
 
-redun0_t mul_a, mul_b, add_o;
-redun1_t mul_out1, tmp;
+redun0_t mul_a, mul_b, hmul_a, hmul_b, add_o;
+redun1_t mul_out1, tmp, sqr_out;
+redun2_t hmul_out;
+
+logic hmul_ctl;
 
 logic [1:0] cnt;
 logic s_carry;
@@ -44,11 +47,11 @@ enum {IDLE, MUL0, MUL1, MUL2, ADD0} state;
 always_comb begin
 
   case(state)
-    IDLE: begin
+    IDLE: begin // Squaring
       mul_a = i_mul_a;
       mul_b = i_mul_b;
     end
-    MUL0: begin
+    MUL0: begin // Squaring
       mul_a = i_mul_a;
       mul_b = i_mul_b;
     end
@@ -69,7 +72,7 @@ always_comb begin
       end
     end
   endcase
-  
+
 end
 
 // State machine
@@ -80,6 +83,7 @@ always_ff @ (posedge i_clk) begin
     o_val <= 0;
     o_mul <= to_redun(0);
     state <= IDLE;
+    hmul_ctl <= 0;
     for (int i = 0; i< NUM_WRDS*2; i++) begin
       tmp[i] <= 0;
     end
@@ -87,9 +91,10 @@ always_ff @ (posedge i_clk) begin
   end else begin
     o_val <= 0;
     cnt <= cnt + 1;
-    case(state) 
+    case(state)
       IDLE: begin
         cnt <= 0;
+        hmul_ctl <= 0;
         // Waiting for valid
       end
       MUL0: begin
@@ -100,12 +105,12 @@ always_ff @ (posedge i_clk) begin
         end
       end
       MUL1: begin
-        if (cnt == 0) tmp <= mul_out1;
+        if (cnt == 0) tmp <= sqr_out;
         o_overflow <= o_overflow || check_overflow(mul_a);
         if(cnt == MULT_CYCLES) begin
           state <= MUL2;
           cnt <= 0;
-          s_carry <= speculative_carry(get_l_wrds(mul_out1));
+          s_carry <= speculative_carry(get_l_wrds(sqr_out));
         end
       end
       MUL2: begin
@@ -114,7 +119,7 @@ always_ff @ (posedge i_clk) begin
           state <= ADD0;
           cnt <= 0;
         end
-      end      
+      end
       ADD0: begin
         o_overflow <= o_overflow || check_overflow(mul_a);
         for (int i = 0; i < NUM_WRDS; i++) begin
@@ -128,14 +133,28 @@ always_ff @ (posedge i_clk) begin
 
     if (i_val) begin
       cnt <= 0;
-      o_val <= 0;        
+      o_val <= 0;
       state <= MUL0;
       o_overflow <= 0;
-    end    
+    end
   end
 end
 
-// Multiplier
+// Half multiplier
+half_multiply #(
+  .NUM_ELEMENTS (NUM_WRDS),
+  .DSP_BIT_LEN (WRD_BITS+1),
+  .WORD_LEN (WRD_BITS),
+  .NUM_ELEMENTS_OUT(NUM_WRDS+SPECULATIVE_CARRY_WRDS)
+)
+half_multiply (
+  .clk ( i_clk ),
+  .ctl ( hmul_ctl ),
+  .A   ( hmul_a   ),
+  .B   ( hmul_b   ),
+  .out ( hmul_out )
+);
+
 
 multiply #(
   .NUM_ELEMENTS (NUM_WRDS),
@@ -145,13 +164,32 @@ multiply #(
   .MUL_OUT_BIT_LEN(2*(WRD_BITS+1)),
   .COL_BIT_LEN(COL_BIT_LEN),
   .EXTRA_TREE_BITS($clog2(NUM_WRDS)),
-  .OUT_BIT_LEN(OUT_BIT_LEN)
+  .OUT_BIT_LEN(OUT_BIT_LEN),
+  .USE_ADDER("YES")
 )
 multiply0 (
   .clk ( i_clk ),
   .A   ( mul_a ),
   .B   ( mul_b ),
   .out ( mul_out1  )
+);
+
+// Unit for squaring
+squarer #(
+  .NUM_ELEMENTS (NUM_WRDS),
+  .A_BIT_LEN (WRD_BITS+1),
+  .B_BIT_LEN (WRD_BITS+1),
+  .WORD_LEN (WRD_BITS),
+  .MUL_OUT_BIT_LEN(2*(WRD_BITS+1)),
+  .COL_BIT_LEN(COL_BIT_LEN),
+  .EXTRA_TREE_BITS($clog2(NUM_WRDS)),
+  .OUT_BIT_LEN(OUT_BIT_LEN)
+)
+squarer0 (
+  .clk ( i_clk ),
+  .A   ( mul_a ),
+  .B   ( mul_b ),
+  .out ( sqr_out  )
 );
 
 

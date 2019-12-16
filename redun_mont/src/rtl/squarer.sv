@@ -44,7 +44,7 @@
          C7,S7    C6,S6    C5,S5    C4,S4    C3,S3    C2,S2    C1,S1    C0,S0
 */
 
-module multiply
+module squarer
    #(
      parameter int NUM_ELEMENTS    = 33,
      parameter int A_BIT_LEN       = 17,
@@ -60,8 +60,7 @@ module multiply
      parameter int EXTRA_TREE_BITS  = (COL_BIT_LEN > WORD_LEN) ?
                                        $clog2(NUM_ELEMENTS)    :
                                        $clog2(NUM_ELEMENTS*2),
-     parameter int OUT_BIT_LEN      = COL_BIT_LEN + EXTRA_TREE_BITS,
-     parameter USE_ADDER = "YES"
+     parameter int OUT_BIT_LEN      = COL_BIT_LEN + EXTRA_TREE_BITS
     )
    (
     input  logic                       clk,
@@ -109,13 +108,14 @@ module multiply
       end
 
       for (ii=0; ii<NUM_ELEMENTS; ii=ii+1) begin : grid_row
-         for (jj=0; jj<NUM_ELEMENTS; jj=jj+1) begin : grid_col
-            grid[(ii+jj)][(2*ii)]     =
-                {{GRID_PAD_LONG{1'b0}},
-                 mul_result[(NUM_ELEMENTS*ii)+jj][WORD_LEN-1:0]};
-            grid[(ii+jj+1)][((2*ii)+1)] =
-                {{GRID_PAD_SHORT{1'b0}},
-                 mul_result[(NUM_ELEMENTS*ii)+jj][MUL_OUT_BIT_LEN-1:WORD_LEN]};
+         for (jj=ii; jj<NUM_ELEMENTS; jj=jj+1) begin : grid_col
+            if( jj == ii ) begin // diagonal cases are used as is
+                grid[(ii+jj)][(2*ii)]       = {{GRID_PAD_LONG{ 1'b0}},       mul_result[(NUM_ELEMENTS*ii)+jj][WORD_LEN-1       :0       ]};
+                grid[(ii+jj+1)][((2*ii)+1)] = {{GRID_PAD_SHORT{1'b0}}, 1'b0, mul_result[(NUM_ELEMENTS*ii)+jj][MUL_OUT_BIT_LEN-1:WORD_LEN]};
+            end else begin // all non diagonal cases are doubled
+                grid[(ii+jj)][(2*ii)]       = {{GRID_PAD_LONG{ 1'b0}},       mul_result[(NUM_ELEMENTS*ii)+jj][WORD_LEN-2       :0         ], 1'b0};
+                grid[(ii+jj+1)][((2*ii)+1)] = {{GRID_PAD_SHORT{1'b0}},       mul_result[(NUM_ELEMENTS*ii)+jj][MUL_OUT_BIT_LEN-1:WORD_LEN-1]};
+            end
          end
       end
    end
@@ -152,31 +152,15 @@ module multiply
          logic [OUT_BIT_LEN-1:0] Cout_col;
          logic [OUT_BIT_LEN-1:0] S_col;
 
-      if (USE_ADDER == "NO") begin: GEN_TREE
-         compressor_tree_3_to_2 #(.NUM_ELEMENTS(CUR_ELEMENTS),
-                                  .BIT_LEN(OUT_BIT_LEN)
-                                 )
-            compressor_tree_3_to_2 (
-               .terms(grid[i][GRID_INDEX:(GRID_INDEX + CUR_ELEMENTS - 1)]),
-               .C(Cout_col),
-               .S(S_col)
-            );
+         adder_tree_2_to_1 #(
+           .NUM_ELEMENTS(CUR_ELEMENTS),
+           .BIT_LEN(OUT_BIT_LEN)
+         )
+         adder_tree_2_to_1 (
+           .terms(grid[i][GRID_INDEX:(GRID_INDEX + CUR_ELEMENTS - 1)]),
+           .S(res[i])
+         );
 
-           always_comb begin
-              res[i] = Cout_col[OUT_BIT_LEN-1:0] + S_col[OUT_BIT_LEN-1:0];
-           end
-         end else begin
-
-           adder_tree_2_to_1 #(
-             .NUM_ELEMENTS(CUR_ELEMENTS),
-             .BIT_LEN(OUT_BIT_LEN)
-           )
-           adder_tree_2_to_1 (
-             .terms(grid[i][GRID_INDEX:(GRID_INDEX + CUR_ELEMENTS - 1)]),
-             .S(res[i])
-           );
-
-         end
       end
    endgenerate
 
