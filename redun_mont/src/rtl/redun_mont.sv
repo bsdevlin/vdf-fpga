@@ -20,8 +20,7 @@ module redun_mont
 (
   input i_clk,
   input i_rst,
-  input        [WRD_BITS:0] i_mul_a [NUM_WRDS],
-  input        [WRD_BITS:0] i_mul_b [NUM_WRDS],
+  input        [WRD_BITS:0] i_sq [NUM_WRDS],
   input                     i_val,
   output logic [WRD_BITS:0] o_mul [NUM_WRDS],
   output logic              o_val,
@@ -53,12 +52,12 @@ always_comb begin
 
   case(state)
     IDLE: begin // Squaring
-      mul_a = i_mul_a;
-      mul_b = i_mul_b;
+      mul_a = i_sq;
+      mul_b = i_sq;
     end
     MUL0: begin // Squaring
-      mul_a = i_mul_a;
-      mul_b = i_mul_b;
+      mul_a = i_sq;
+      mul_b = i_sq;
     end
     MUL1: begin
       mul_a = sqr_out[0:NUM_WRDS-1];

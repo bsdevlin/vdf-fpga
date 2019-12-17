@@ -40,10 +40,9 @@ end
 
 
 redun_mont redun_mont (
-  .i_clk ( clk ),
-  .i_rst ( rst ),
-  .i_mul_a ( in ),
-  .i_mul_b ( in ),
+  .i_clk ( clk   ),
+  .i_rst ( rst   ),
+  .i_sq  ( in    ),
   .i_val ( in_val ),
   .o_mul ( out ),
   .o_val ( out_val ),

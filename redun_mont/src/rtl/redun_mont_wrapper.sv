@@ -26,11 +26,11 @@ module redun_wrapper
   output logic       valid
 );
 
-redun0_t mul_i, mul_o;
+redun0_t sq_in_r, mul_o;
 logic start_r, valid_o, reset_r;
 
 always_ff @ (posedge clk) begin
-  mul_i <= sq_in;
+  sq_in_r <= sq_in;
   start_r <= start;
   valid <= valid_o;
   sq_out <= mul_o;
@@ -38,13 +38,12 @@ always_ff @ (posedge clk) begin
 end
 
 redun_mont redun_mont (
-  .i_clk   ( clk     ),
-  .i_rst   ( reset_r ),
-  .i_mul_a ( mul_i   ),
-  .i_mul_b ( mul_i   ),
-  .i_val   ( start_r ),
-  .o_mul   ( mul_o   ),
-  .o_val   ( valid_o ),
+  .i_clk  ( clk     ),
+  .i_rst  ( reset_r ),
+  .i_sq   ( sq_in_r  ),
+  .i_val  ( start_r ),
+  .o_mul  ( mul_o   ),
+  .o_val  ( valid_o ),
   .o_overflow()
 );
 

@@ -86,7 +86,7 @@ module squarer
    genvar i, j;
    generate
       for (i=0; i<NUM_ELEMENTS; i=i+1) begin : mul_A
-         for (j=0; j<NUM_ELEMENTS; j=j+1) begin : mul_B
+         for (j=i; j<NUM_ELEMENTS; j=j+1) begin : mul_B
             multiplier #(.A_BIT_LEN(A_BIT_LEN),
                          .B_BIT_LEN(B_BIT_LEN)
                         ) multiplier (
