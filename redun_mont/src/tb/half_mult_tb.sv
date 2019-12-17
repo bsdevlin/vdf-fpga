@@ -74,8 +74,6 @@ initial begin
   inb[0] = 16'hffFF;
   inb[2] = 16'h0030;
   
-  
-  
   ctl = 0;
   repeat(10) @(posedge clk);
   $display("Result was %d", from_redun(out));

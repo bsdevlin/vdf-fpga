@@ -21,6 +21,7 @@ import redun_mont_pkg::*;
 import common_pkg::*;
 
 localparam CLK_PERIOD = 100;
+localparam NUM_ITERATIONS = 10;
 
 logic clk, rst;
 redun0_t in, out;
@@ -51,15 +52,15 @@ redun_mont redun_mont (
 
 
 initial begin
-  int i = 0;
-  fe_t a, a_;
+  fe_t a, a_, res, exp;
   in_val = 0;
   in = to_redun(0);
   #(40*CLK_PERIOD);
-  a = 2;
+  
+  a = 2; // Our starting value
+  
   a_ = to_mont(a);
   in = to_redun(a_);
-
 
   @(posedge clk);
   in_val = 1;
@@ -67,15 +68,26 @@ initial begin
   in_val = 0;
   in = to_redun(0);
 
-  for (int i = 0; i < 1000; i++) begin
+  for (int i = 0; i < NUM_ITERATIONS; i++) begin
     while (out_val == 0) @(posedge clk);
-
     $display("#%0d Expected, Got:\n0x%0x\n0x%0x", i, fe_mul_mont(a_, a_), from_redun(out));
     assert (from_redun(out) == fe_mul_mont(a_, a_)) else $fatal("ERROR -  wrong");
     a_ = fe_mul_mont(a_, a_);
     @(posedge clk);
   end
-
-  #1us $finish();
+  
+  res = from_mont(from_redun(out));
+  exp = mod_sq(a,  NUM_ITERATIONS);
+  
+  $display("Final result was:");
+  $display("0x%0x", res);
+  
+  if (res != exp) 
+    $fatal("ERROR - final result was wrong, expected:\n0x%0x", exp);
+  else
+    $display("Result was correct");
+  
+  repeat(2) @(posedge clk);
+  $finish();
 end
 endmodule

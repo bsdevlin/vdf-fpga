@@ -43,16 +43,6 @@ package redun_mont_pkg;
       if (&in[i][WRD_BITS-1:0]) speculative_carry = 1;
   endfunction
 
-  function redun0_t get_l_wrds(input redun1_t in);
-    for (int i = 0; i < NUM_WRDS; i++)
-      get_l_wrds[i] = in[i];
-  endfunction
-
-  function redun0_t get_h_wrds(input redun1_t in);
-    for (int i = 0; i < NUM_WRDS; i++)
-      get_h_wrds[i] = in[i+NUM_WRDS];
-  endfunction
-
   function redun0_t to_redun(input fe_t in);
     for (int i = 0; i < NUM_WRDS; i++)
       to_redun[i] = in[i*WRD_BITS +: WRD_BITS];
@@ -91,6 +81,15 @@ package redun_mont_pkg;
 
   function fe_t from_mont(fe_t a);
     from_mont = fe_mul_mont(a, 1);
+  endfunction
+  
+  function fe_t mod_sq(fe_t a, t);
+    logic [DAT_BITS*2-1:0] tmp;
+    tmp = a;
+    for (fe_t i = 0; i < t; i++) begin
+      tmp = (tmp * tmp) % P;
+    end
+    mod_sq = tmp[DAT_BITS-1:0];
   endfunction
 
 endpackage
