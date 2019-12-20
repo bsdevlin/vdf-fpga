@@ -73,6 +73,7 @@ module squarer
    logic [OUT_BIT_LEN-1:0]     Cout[NUM_ELEMENTS*2];
    logic [OUT_BIT_LEN-1:0]     S[NUM_ELEMENTS*2];
    logic [OUT_BIT_LEN-1:0]     res[NUM_ELEMENTS*2];
+   logic [OUT_BIT_LEN-1:0]     res_int[NUM_ELEMENTS*2];
 
    localparam int GRID_PAD_SHORT   = EXTRA_TREE_BITS;
    localparam int GRID_PAD_LONG    = (COL_BIT_LEN - WORD_LEN) +
@@ -80,7 +81,6 @@ module squarer
 
    logic [MUL_OUT_BIT_LEN-1:0] mul_result[NUM_ELEMENTS*NUM_ELEMENTS];
    logic [OUT_BIT_LEN-1:0]     grid[NUM_ELEMENTS*2][NUM_ELEMENTS*2];
-
 
    // Instantiate all the multipliers, requires NUM_ELEMENTS^2 muls
    genvar i, j;
@@ -163,9 +163,19 @@ module squarer
 
       end
    endgenerate
+   
+   always_comb
+     for (int ii = 0; ii < NUM_ELEMENTS*2; ii++)
+       res_int[ii] = res[ii][WORD_LEN-1:0] + (ii > 0 ? res[ii-1][OUT_BIT_LEN-1:WORD_LEN] : 0);
 
+   // Carry proigate on the boundary as we need MSB bits
    always_ff @ (posedge clk)
      for (int ii = 0; ii < NUM_ELEMENTS*2; ii++)
-       out[ii] <= res[ii][WORD_LEN-1:0] + (ii > 0 ? res[ii-1][OUT_BIT_LEN-1:WORD_LEN] : 0);
+       if (ii == NUM_ELEMENTS-1)
+         out[ii] <= res_int[ii][WORD_LEN-1:0];
+       else if (ii == NUM_ELEMENTS)
+         out[ii] <= res_int[ii] + res_int[ii-1][WORD_LEN];
+       else
+         out[ii] <= res_int[ii];
 
 endmodule

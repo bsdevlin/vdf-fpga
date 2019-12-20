@@ -31,15 +31,14 @@ localparam COL_BIT_LEN = 2*(WRD_BITS+1) - WRD_BITS;
 localparam OUT_BIT_LEN = COL_BIT_LEN + $clog2(NUM_WRDS);
 localparam MULT_CYCLES = 2'd1;
 
-redun0_t mul_a, mul_b, hmul_a, hmul_b, add_o, hmul_out_h;
-redun1_t tmp, sqr_out;
+redun0_t mul_a, mul_b, hmul_a, hmul_b, hmul_out_h, tmp_h;
+redun1_t tmp,  sqr_out;
 redun2_t hmul_out;
 
 
 logic hmul_ctl;
 
 logic [1:0] cnt;
-logic s_carry;
 enum {IDLE, MUL0, MUL1, MUL2, ADD0, FULL_MULT} state;
 
 // Assign input to multiplier
@@ -49,35 +48,24 @@ always_comb begin
     
   hmul_a = sqr_out[0:NUM_WRDS-1];
   hmul_b = to_redun(MONT_FACTOR);
-
+  
   case(state)
     IDLE: begin // Squaring
       mul_a = i_sq;
       mul_b = i_sq;
     end
     MUL0: begin // Squaring
-      mul_a = i_sq;
-      mul_b = i_sq;
+      hmul_a = sqr_out[0:NUM_WRDS-1];
+      hmul_b = to_redun(MONT_FACTOR);
     end
-    MUL1: begin
-      mul_a = sqr_out[0:NUM_WRDS-1];
-      mul_a[NUM_WRDS-1][WRD_BITS] = 0;
-      mul_b = to_redun(MONT_FACTOR);
-    end
-    MUL2: begin
-      mul_a = hmul_out[0:NUM_WRDS-1];
-      mul_a[NUM_WRDS-1][WRD_BITS] = 0;
-      mul_b = to_redun(P);
-      
+    MUL1: begin 
       hmul_a = hmul_out[0:NUM_WRDS-1];
       hmul_a[NUM_WRDS-1][WRD_BITS] = 0;
       hmul_b = to_redun(P);
     end
-    ADD0: begin
-      for (int i = 0; i < NUM_WRDS; i++) begin
-        mul_a[i] = tmp[i+NUM_WRDS] + hmul_out_h[i] + (i == 0 ? tmp[NUM_WRDS-1][WRD_BITS] + hmul_out[NUM_WRDS][WRD_BITS] + 1 : 0);
-        mul_b[i] = mul_a[i];
-      end
+    MUL2: begin     
+      mul_a = hmul_out_h;
+      mul_b = hmul_out_h;
     end
   endcase
 
@@ -95,10 +83,13 @@ always_ff @ (posedge i_clk) begin
     for (int i = 0; i< NUM_WRDS*2; i++) begin
       tmp[i] <= 0;
     end
-    s_carry <= 0;
+    tmp_h <= to_redun(0);
   end else begin
     o_val <= 0;
     cnt <= cnt + 1;
+    for (int i = 0; i < NUM_WRDS; i++) begin
+      tmp_h[i] <= sqr_out[NUM_WRDS+i];
+    end    
     case(state)
       IDLE: begin
         cnt <= 0;
@@ -106,36 +97,29 @@ always_ff @ (posedge i_clk) begin
         // Waiting for valid
       end
       MUL0: begin
+        tmp_h <= to_redun(0);
         if(cnt == MULT_CYCLES) begin
           state <= MUL1;
-          cnt <= 0;
-        end
-      end
-      MUL1: begin
-        if (cnt == 0) tmp <= sqr_out;
-        o_overflow <= o_overflow || check_overflow(mul_a);
-        if(cnt == MULT_CYCLES) begin
-          state <= MUL2;
+          tmp <= sqr_out;
           hmul_ctl <= 1;
           cnt <= 0;
         end
       end
-      MUL2: begin
-        o_overflow <= o_overflow || check_overflow(mul_a);
+      MUL1: begin
         if(cnt == MULT_CYCLES) begin
-          state <= ADD0;
+          state <= MUL2;
           hmul_ctl <= 0;
           cnt <= 0;
         end
       end
-      ADD0: begin
-        o_overflow <= o_overflow || check_overflow(mul_a);
-        for (int i = 0; i < NUM_WRDS; i++) begin
-          o_mul[i] <= tmp[i+NUM_WRDS] + hmul_out_h[i] + (i == 0 ? tmp[NUM_WRDS-1][WRD_BITS] + hmul_out[NUM_WRDS][WRD_BITS] + 1 : 0);
+      MUL2: begin
+        if(cnt == MULT_CYCLES) begin
+          state <= MUL0;
+          o_mul <= hmul_out_h;
+          o_val <= 1;
+          hmul_ctl <= 0;
+          cnt <= 0;
         end
-        o_val <= 1;
-        cnt <= 1;
-        state <= MUL0;
       end
       FULL_MULT: begin
         hmul_ctl <= 1; // Need to get upper words
@@ -163,6 +147,8 @@ half_multiply (
   .ctl ( hmul_ctl ),
   .A   ( hmul_a   ),
   .B   ( hmul_b   ),
+  .ADD_i ( tmp_h  ), 
+  .i_sqr ( 0 ),
   .out ( hmul_out )
 );
 

@@ -71,7 +71,7 @@ package redun_mont_pkg;
     tmp = tmp * P; // Can use half multiplier here (want upper half) (can share with half multiplier?)
     tmp = tmp + m_;
     tmp = tmp >> MONT_REDUCE_BITS;
-    if (tmp >= P) tmp -= P;
+    assert (tmp < P) else $fatal(1,"ERROR: Result too large");
     fe_mul_mont = tmp;
   endfunction
 
