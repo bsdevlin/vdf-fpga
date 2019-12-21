@@ -163,7 +163,7 @@ module squarer
 
       end
    endgenerate
-   
+
    always_comb
      for (int ii = 0; ii < NUM_ELEMENTS*2; ii++)
        res_int[ii] = res[ii][WORD_LEN-1:0] + (ii > 0 ? res[ii-1][OUT_BIT_LEN-1:WORD_LEN] : 0);

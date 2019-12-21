@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2019  Benjamin Devlin and Zcash Foundation
+  Copyright (C) 2019  Benjamin Devlin
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -55,7 +55,7 @@ initial begin
   int i;
   in_val = 0;
   in = to_redun(0);
-  
+
   repeat (20) @(posedge clk);
 
   a = 2; // Our starting value
@@ -67,7 +67,7 @@ initial begin
   //a_= 'h5af3dc0aea7d81d4f264e7db04ea9328912ba1f9a846752b19e103ce31531454b6682369ae9b92bee8df4974c5b1105730a5d3f038d8a3e4231986903e39d11497f20b40ce831d6a25ee59405d8ec14147784e81a3139655cfea1ff8b221f878d1995f6519142f7f982d78d87ab2c832885d5cb37547076fbfda0f02f5c11ea4;
 
   a = from_mont(a_);
-  
+
   in = to_redun(a_);
 
   @(posedge clk);
