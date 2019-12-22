@@ -31,12 +31,9 @@ localparam COL_BIT_LEN = 2*(WRD_BITS+1) - WRD_BITS;
 localparam OUT_BIT_LEN = COL_BIT_LEN + $clog2(NUM_WRDS);
 localparam MULT_CYCLES = 2'd1;
 
-redun0_t mul_a, mul_b, hmul_a, hmul_b, hmul_out_h, tmp_h, tmp_zero;
-redun1_t sqr_out, mult_out, mult_out_r;
-redun2_t hmul_out;
+redun0_t mul_a, mul_b, hmul_out_h, tmp_h;
+redun1_t mult_out, mult_out_r;
 
-
-logic hmul_ctl;
 logic val, val_o, i_val_w;
 
 logic [1:0] cnt, ctl;
@@ -48,39 +45,25 @@ always_comb begin
   i_val_w = val_o | i_val;
 
   for (int i = 0; i < NUM_WRDS; i++)
-    hmul_out_h[i] = hmul_out[NUM_WRDS-1-i];
-    
-  hmul_a = mult_out[0:NUM_WRDS-1];//sqr_out[0:NUM_WRDS-1];
-  hmul_b = to_redun(MONT_FACTOR);
-  
+    hmul_out_h[i] = mult_out[NUM_WRDS-1-i];
+
   case(state)
     IDLE: begin // Squaring
       mul_a = i_sq;
       mul_b = i_sq;
     end
     MUL0: begin // Squaring
-      hmul_a = mult_out[0:NUM_WRDS-1];//sqr_out[0:NUM_WRDS-1];
-      hmul_b = to_redun(MONT_FACTOR);
-      
-      mul_a = mult_out[0:NUM_WRDS-1];//sqr_out[0:NUM_WRDS-1];
+      mul_a = mult_out[0:NUM_WRDS-1];
       mul_b = to_redun(MONT_FACTOR);          
     end
     MUL1: begin 
-      /*hmul_a = hmul_out[0:NUM_WRDS-1];
-      hmul_a[NUM_WRDS-1][WRD_BITS] = 0;
-      hmul_b = to_redun(P);*/
-      hmul_a = mult_out[0:NUM_WRDS-1];
-      hmul_a[NUM_WRDS-1][WRD_BITS] = 0;
-      hmul_b = to_redun(P);      
-      
-      mul_a = hmul_out[0:NUM_WRDS-1];
+      mul_a = mult_out[0:NUM_WRDS-1];
       mul_a[NUM_WRDS-1][WRD_BITS] = 0;
       mul_b = to_redun(P);
     end
     MUL2: begin     
       mul_a = hmul_out_h;
       mul_b = hmul_out_h;
-      
     end
   endcase
 
@@ -95,23 +78,17 @@ always_ff @ (posedge i_clk) begin
     o_val <= 0;
     o_mul <= to_redun(0);
     state <= IDLE;
-    hmul_ctl <= 0;
     ctl <= 0;
     tmp_h <= to_redun(0);
-    tmp_zero <= to_redun(0);
     mult_out_r <= to_redun(0);
   end else begin
     mult_out_r <= mult_out;
     o_val <= 0;
     cnt <= cnt + 1;
     val <= val_o;
-     //     for (int i = 0; i < NUM_WRDS; i++) begin
-     //       tmp_h[i] <= mult_out[NUM_WRDS+i]; //sqr_out[NUM_WRDS+i]; // + i == 0 ? 1 : 0;
-     //   end 
     case(state)
       IDLE: begin
         cnt <= 0;
-        hmul_ctl <= 0;
         ctl <= 2;
         // Waiting for valid and square
       end
@@ -120,21 +97,22 @@ always_ff @ (posedge i_clk) begin
         tmp_h <= to_redun(0);
         if(cnt == MULT_CYCLES) begin
           state <= MUL1;
-          hmul_ctl <= 1;
           cnt <= 0;
           
           // TODO pipeline this with mult_out_r
         for (int i = 0; i < NUM_WRDS; i++) begin
-          tmp_h[i] <= mult_out[NUM_WRDS+i];/*sqr_out[NUM_WRDS+i];*/ // + i == 0 ? 1 : 0;
+          tmp_h[i] <= mult_out[NUM_WRDS+i];// + i == 0 ? 1 : 0;
         end 
           
         end
       end
       MUL1: begin
         ctl <= 1;
+        if (cnt==0) begin
+          tmp_h[0] <= tmp_h[0] + 1;
+        end
         if(cnt == MULT_CYCLES) begin
           state <= MUL2;
-          hmul_ctl <= 0;
           cnt <= 0;
         end
       end
@@ -143,16 +121,14 @@ always_ff @ (posedge i_clk) begin
         tmp_h <= to_redun(0);
         if(cnt == MULT_CYCLES) begin
           state <= MUL0;
-       //   tmp_h <= to_redun(0);
           o_mul <= hmul_out_h;
           o_val <= 1;
-          hmul_ctl <= 0;
           ctl <= 2;
           cnt <= 0;
         end
       end
       FULL_MULT: begin
-        hmul_ctl <= 1; // Need to get upper words
+       // Need to get upper words
       end
     endcase
 
@@ -166,41 +142,7 @@ always_ff @ (posedge i_clk) begin
   end
 end
 
-// Half multiplier
-half_multiply #(
-  .NUM_ELEMENTS (NUM_WRDS),
-  .DSP_BIT_LEN (WRD_BITS+1),
-  .WORD_LEN (WRD_BITS),
-  .NUM_ELEMENTS_OUT(NUM_WRDS+SPECULATIVE_CARRY_WRDS)
-)
-half_multiply (
-  .clk ( i_clk ),
-  .ctl ( hmul_ctl ),
-  .A   ( hmul_a   ),
-  .B   ( hmul_b   ),
-  .ADD_i ( tmp_h  ), 
-  .i_sqr ( 0 ),
-  .out ( hmul_out )
-);
-/*
-// Unit for squaring
-squarer #(
-  .NUM_ELEMENTS (NUM_WRDS),
-  .A_BIT_LEN (WRD_BITS+1),
-  .B_BIT_LEN (WRD_BITS+1),
-  .WORD_LEN (WRD_BITS),
-  .MUL_OUT_BIT_LEN(2*(WRD_BITS+1)),
-  .COL_BIT_LEN(COL_BIT_LEN),
-  .EXTRA_TREE_BITS($clog2(NUM_WRDS)),
-  .OUT_BIT_LEN(OUT_BIT_LEN)
-)
-squarer0 (
-  .clk ( i_clk ),
-  .A   ( mul_a ),
-  .B   ( mul_b ),
-  .out ( sqr_out  )
-);
-*/
+
 multi_mode_multiplier #(
   .NUM_ELEMENTS (NUM_WRDS),
   .DSP_BIT_LEN (WRD_BITS+1),
