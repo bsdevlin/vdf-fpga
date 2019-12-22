@@ -32,9 +32,10 @@ module multi_mode_multiplier #(
   parameter int DSP_BIT_LEN      = 17,
   parameter int WORD_LEN         = 16,
   parameter int NUM_ELEMENTS_OUT = NUM_ELEMENTS*2,
-  parameter int ADDER_TYPE       = 0
+  parameter int ADDER_TYPE       = 1
 )(
   input                          i_clk,
+  input                          i_rst,
   input                          i_val,
   input        [1:0]             i_ctl,
   input        [DSP_BIT_LEN-1:0] i_dat_a[NUM_ELEMENTS],
@@ -57,19 +58,26 @@ logic [1:0] ctl_r;
 logic val_r;
 
    always_ff @ (posedge i_clk) begin
-     ctl_r <= i_ctl;
-     val_r <= i_val;
-     o_val <= val_r;
-     for (int i = 0; i < NUM_ELEMENTS; i++) begin
-       if (i_ctl == 0) begin
-         add_r[i] <= 0;
-         add_r[i] <= i_add_term[i];
-       end else if (i_ctl == 1) begin
-         add_r[NUM_ELEMENTS-i-1] <= 0;
-         add_r[NUM_ELEMENTS-i-1] <= i_add_term[i];// make sure we add one in here;
-       end else if (i_ctl == 2) begin
-         add_r[i] <= 0;
-         add_r[i] <= i_add_term[i];
+     if (i_rst) begin
+       ctl_r <= 0;
+       val_r <= 0;
+       o_val <= 0;
+       for (int i = 0; i < NUM_ELEMENTS; i++) add_r[i] <= 0;
+     end else begin
+       ctl_r <= i_ctl;
+       val_r <= i_val;
+       o_val <= val_r;
+       for (int i = 0; i < NUM_ELEMENTS; i++) begin
+         if (i_ctl == 0) begin
+           add_r[i] <= 0;
+           add_r[i] <= i_add_term[i];
+         end else if (i_ctl == 1) begin
+           add_r[NUM_ELEMENTS-i-1] <= 0;
+           add_r[NUM_ELEMENTS-i-1] <= i_add_term[i];// make sure we add one in here;
+         end else if (i_ctl == 2) begin
+           add_r[i] <= 0;
+           add_r[i] <= i_add_term[i];
+         end
        end
      end
    end
@@ -249,7 +257,7 @@ logic val_r;
              end
 
            end else
-             assert(0, "ERROR - unsupported value for ADDER_TYPE");
+             fatal(0, "ERROR - unsupported value for ADDER_TYPE");
 
       end
 

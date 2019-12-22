@@ -70,11 +70,11 @@ initial begin
 
   in = to_redun(a_);
 
-  @(posedge clk);
+  @(negedge clk);
   in_val = 1;
-  @(posedge clk);
+  @(negedge clk);
   in_val = 0;
-  in = to_redun(0);
+  //in = to_redun(0);
 
   for (i = 0; i < NUM_ITERATIONS; i++) begin
     while (out_val == 0) @(posedge clk);

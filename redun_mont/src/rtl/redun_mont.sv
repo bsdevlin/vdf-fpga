@@ -32,18 +32,21 @@ localparam OUT_BIT_LEN = COL_BIT_LEN + $clog2(NUM_WRDS);
 localparam MULT_CYCLES = 2'd1;
 
 redun0_t mul_a, mul_b, hmul_a, hmul_b, hmul_out_h, tmp_h, tmp_zero;
-redun1_t tmp,  sqr_out, mult_out;
+redun1_t sqr_out, mult_out, mult_out_r;
 redun2_t hmul_out;
 
 
 logic hmul_ctl;
-logic val, val_o;
+logic val, val_o, i_val_w;
 
-logic [1:0] cnt;
-enum {IDLE, MUL0, MUL1, MUL2, ADD0, FULL_MULT} state;
+logic [1:0] cnt, ctl;
+enum {IDLE, MUL0, MUL1, MUL2, FULL_MULT} state;
 
 // Assign input to multiplier
 always_comb begin
+
+  i_val_w = val_o | i_val;
+
   for (int i = 0; i < NUM_WRDS; i++)
     hmul_out_h[i] = hmul_out[NUM_WRDS-1-i];
     
@@ -58,15 +61,26 @@ always_comb begin
     MUL0: begin // Squaring
       hmul_a = mult_out[0:NUM_WRDS-1];//sqr_out[0:NUM_WRDS-1];
       hmul_b = to_redun(MONT_FACTOR);
+      
+      mul_a = mult_out[0:NUM_WRDS-1];//sqr_out[0:NUM_WRDS-1];
+      mul_b = to_redun(MONT_FACTOR);          
     end
     MUL1: begin 
-      hmul_a = hmul_out[0:NUM_WRDS-1];
+      /*hmul_a = hmul_out[0:NUM_WRDS-1];
       hmul_a[NUM_WRDS-1][WRD_BITS] = 0;
-      hmul_b = to_redun(P);
+      hmul_b = to_redun(P);*/
+      hmul_a = mult_out[0:NUM_WRDS-1];
+      hmul_a[NUM_WRDS-1][WRD_BITS] = 0;
+      hmul_b = to_redun(P);      
+      
+      mul_a = hmul_out[0:NUM_WRDS-1];
+      mul_a[NUM_WRDS-1][WRD_BITS] = 0;
+      mul_b = to_redun(P);
     end
     MUL2: begin     
       mul_a = hmul_out_h;
       mul_b = hmul_out_h;
+      
     end
   endcase
 
@@ -82,46 +96,58 @@ always_ff @ (posedge i_clk) begin
     o_mul <= to_redun(0);
     state <= IDLE;
     hmul_ctl <= 0;
-    for (int i = 0; i< NUM_WRDS*2; i++) begin
-      tmp[i] <= 0;
-    end
+    ctl <= 0;
     tmp_h <= to_redun(0);
     tmp_zero <= to_redun(0);
+    mult_out_r <= to_redun(0);
   end else begin
+    mult_out_r <= mult_out;
     o_val <= 0;
     cnt <= cnt + 1;
     val <= val_o;
-    for (int i = 0; i < NUM_WRDS; i++) begin
-      tmp_h[i] <= mult_out[NUM_WRDS+i]; //sqr_out[NUM_WRDS+i]; // + i == 0 ? 1 : 0;
-    end    
+     //     for (int i = 0; i < NUM_WRDS; i++) begin
+     //       tmp_h[i] <= mult_out[NUM_WRDS+i]; //sqr_out[NUM_WRDS+i]; // + i == 0 ? 1 : 0;
+     //   end 
     case(state)
       IDLE: begin
         cnt <= 0;
         hmul_ctl <= 0;
-        // Waiting for valid
+        ctl <= 2;
+        // Waiting for valid and square
       end
       MUL0: begin
+        ctl <= 0;
         tmp_h <= to_redun(0);
         if(cnt == MULT_CYCLES) begin
           state <= MUL1;
-          tmp <= mult_out;//sqr_out;
           hmul_ctl <= 1;
           cnt <= 0;
+          
+          // TODO pipeline this with mult_out_r
+        for (int i = 0; i < NUM_WRDS; i++) begin
+          tmp_h[i] <= mult_out[NUM_WRDS+i];/*sqr_out[NUM_WRDS+i];*/ // + i == 0 ? 1 : 0;
+        end 
+          
         end
       end
       MUL1: begin
+        ctl <= 1;
         if(cnt == MULT_CYCLES) begin
           state <= MUL2;
           hmul_ctl <= 0;
           cnt <= 0;
         end
       end
-      MUL2: begin
+      MUL2: begin 
+        ctl <= 2;
+        tmp_h <= to_redun(0);
         if(cnt == MULT_CYCLES) begin
           state <= MUL0;
+       //   tmp_h <= to_redun(0);
           o_mul <= hmul_out_h;
           o_val <= 1;
           hmul_ctl <= 0;
+          ctl <= 2;
           cnt <= 0;
         end
       end
@@ -129,13 +155,12 @@ always_ff @ (posedge i_clk) begin
         hmul_ctl <= 1; // Need to get upper words
       end
     endcase
-    
-    val <= i_val;
 
     if (i_val) begin
       cnt <= 0;
       o_val <= 0;
       state <= MUL0;
+      ctl <= 2;
       o_overflow <= 0;
     end
   end
@@ -157,7 +182,7 @@ half_multiply (
   .i_sqr ( 0 ),
   .out ( hmul_out )
 );
-
+/*
 // Unit for squaring
 squarer #(
   .NUM_ELEMENTS (NUM_WRDS),
@@ -175,7 +200,7 @@ squarer0 (
   .B   ( mul_b ),
   .out ( sqr_out  )
 );
-
+*/
 multi_mode_multiplier #(
   .NUM_ELEMENTS (NUM_WRDS),
   .DSP_BIT_LEN (WRD_BITS+1),
@@ -183,14 +208,15 @@ multi_mode_multiplier #(
   .NUM_ELEMENTS_OUT(NUM_WRDS+SPECULATIVE_CARRY_WRDS)
 )
 multi_mode_multiplier (
-  .i_clk ( i_clk ),
-  .i_val ( val   ),
-  .i_ctl ( 2'd2  ),
-  .i_dat_a ( mul_a),
-  .i_dat_b ( mul_b ),
-  .i_add_term (tmp_zero),
-  .o_dat (mult_out),
-  .o_val ( val_o )
+  .i_clk      ( i_clk    ),
+  .i_rst      ( i_rst    ),
+  .i_val      ( i_val_w  ),
+  .i_ctl      ( ctl      ),
+  .i_dat_a    ( mul_a    ),
+  .i_dat_b    ( mul_b    ),
+  .i_add_term ( tmp_h    ),
+  .o_dat      ( mult_out ),
+  .o_val      ( val_o    )
 );
 
 
