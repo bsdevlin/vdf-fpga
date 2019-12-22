@@ -29,3 +29,5 @@ msu/rtl/vivado_simple/msu.ip_user_files
 msu/rtl/vivado_simple/msu.runs
 msu/rtl/vivado_simple/msu.srcs/mem
 msu/rtl/vivado_simple/msu.sim
+
+project_1/*

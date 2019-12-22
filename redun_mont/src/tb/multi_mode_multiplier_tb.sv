@@ -23,7 +23,7 @@ localparam CLK_PERIOD = 100;
 
 localparam NUM_WRDS = 3;
 localparam WRD_BITS = 16;
-localparam NUM_ELEMENTS_OUT = NUM_WRDS;
+localparam NUM_ELEMENTS_OUT = NUM_WRDS+1;
 
 typedef logic [NUM_WRDS*2*(WRD_BITS+1)-1:0] fe_t;
 typedef logic [WRD_BITS:0] redun0_t [NUM_WRDS];

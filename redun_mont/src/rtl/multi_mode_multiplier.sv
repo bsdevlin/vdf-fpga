@@ -21,36 +21,40 @@
  - i_ctl = 2 for square
 
  - i_add_term allows for an addition term to be added to the output products
+
+ Adder type can be defined:
+ - 0 for default 3:2 compressors
+ - 1 for 2:1 compressor from Eric Pearson
+ - 2 for 6:3 compressor from Kurt Baty
  */
-module multi_mode_multiplier
-   #(
-     parameter int NUM_ELEMENTS    = 33,
-     parameter int DSP_BIT_LEN     = 17,
-     parameter int WORD_LEN        = 16,
-     parameter int NUM_ELEMENTS_OUT = NUM_ELEMENTS*2
-    )
-   (
-    input  logic                       i_clk,
-    input                              i_val,
-    input  logic [1:0]                 i_ctl,
-    input  logic [DSP_BIT_LEN-1:0]     i_dat_a[NUM_ELEMENTS],
-    input  logic [DSP_BIT_LEN-1:0]     i_dat_b[NUM_ELEMENTS],
-    input  logic [DSP_BIT_LEN-1:0]     i_add_term[NUM_ELEMENTS],
-    output logic [DSP_BIT_LEN-1:0]     o_dat[NUM_ELEMENTS*2],
-    output logic                       o_val
-   );
+module multi_mode_multiplier #(
+  parameter int NUM_ELEMENTS     = 33,
+  parameter int DSP_BIT_LEN      = 17,
+  parameter int WORD_LEN         = 16,
+  parameter int NUM_ELEMENTS_OUT = NUM_ELEMENTS*2,
+  parameter int ADDER_TYPE       = 0
+)(
+  input                          i_clk,
+  input                          i_val,
+  input        [1:0]             i_ctl,
+  input        [DSP_BIT_LEN-1:0] i_dat_a[NUM_ELEMENTS],
+  input        [DSP_BIT_LEN-1:0] i_dat_b[NUM_ELEMENTS],
+  input        [DSP_BIT_LEN-1:0] i_add_term[NUM_ELEMENTS],
+  output logic [DSP_BIT_LEN-1:0] o_dat[NUM_ELEMENTS*2],
+  output logic                   o_val
+);
 
-   localparam int OUT_BIT_LEN = (2*DSP_BIT_LEN - WORD_LEN) + $clog2(2*NUM_ELEMENTS+1);
+localparam int OUT_BIT_LEN = (2*DSP_BIT_LEN - WORD_LEN) + $clog2(2*NUM_ELEMENTS+1);
 
-   logic [OUT_BIT_LEN-1:0]   res[NUM_ELEMENTS*2];
-   logic [DSP_BIT_LEN-1:0]   res_int[NUM_ELEMENTS*2];
+logic [OUT_BIT_LEN-1:0]   res[NUM_ELEMENTS*2];
+logic [DSP_BIT_LEN-1:0]   res_int[NUM_ELEMENTS*2];
 
-   logic [OUT_BIT_LEN-1:0]   add_r[NUM_ELEMENTS];
-   logic [DSP_BIT_LEN*2-1:0] mul_result[NUM_ELEMENTS][NUM_ELEMENTS];
-   logic [OUT_BIT_LEN-1:0]   grid[NUM_ELEMENTS*2][NUM_ELEMENTS*2];
+logic [OUT_BIT_LEN-1:0]   add_r[NUM_ELEMENTS];
+logic [DSP_BIT_LEN*2-1:0] mul_result[NUM_ELEMENTS][NUM_ELEMENTS];
+logic [OUT_BIT_LEN-1:0]   grid[NUM_ELEMENTS*2][NUM_ELEMENTS*2];
 
-   logic [1:0] ctl_r;
-   logic val_r;
+logic [1:0] ctl_r;
+logic val_r;
 
    always_ff @ (posedge i_clk) begin
      ctl_r <= i_ctl;
@@ -104,14 +108,16 @@ module multi_mode_multiplier
                 endcase
               end
 
-              multiplier #(.A_BIT_LEN(DSP_BIT_LEN),
-                         .B_BIT_LEN(DSP_BIT_LEN)
-                        ) multiplier (
-                          .clk(i_clk),
-                          .A(mul_a),
-                          .B(mul_b),
-                          .P(mul_result[i][j])
-                         );
+              multiplier #(
+                .A_BIT_LEN(DSP_BIT_LEN),
+                .B_BIT_LEN(DSP_BIT_LEN)
+              ) multiplier (
+                .clk(i_clk),
+                .A(mul_a),
+                .B(mul_b),
+                .P(mul_result[i][j])
+               );
+
             end else begin
               always_comb mul_result[i][j] = 0;
             end
@@ -192,35 +198,94 @@ module multi_mode_multiplier
              terms = grid[i][GRID_INDEX:(GRID_INDEX + CUR_ELEMENTS - 1)];
            end
 
-// We could really make to branches or accumulators, and sum the outputs, to save on logic
-           adder_tree_2_to_1 #(
-             .NUM_ELEMENTS(TOT_ELEMENTS),
-             .BIT_LEN(OUT_BIT_LEN)
-           )
-           adder_tree_2_to_1 (
-             .terms(terms),
-             .S(res[i])
-           );
+// TODO - We could really make to branches or accumulators, and sum the outputs, to save on logic
+           if (ADDER_TYPE == 0) begin
+
+             logic [OUT_BIT_LEN-1:0] Cout_col;
+             logic [OUT_BIT_LEN-1:0] S_col;
+
+             compressor_tree_3_to_2 #(
+               .NUM_ELEMENTS(TOT_ELEMENTS),
+               .BIT_LEN(OUT_BIT_LEN)
+             )
+             compressor_tree_3_to_2 (
+               .terms(terms),
+               .C(Cout_col),
+               .S(S_col)
+             );
+
+             always_comb begin
+               res[i] = Cout_col[OUT_BIT_LEN-1:0] + S_col[OUT_BIT_LEN-1:0];
+             end
+
+           end else if (ADDER_TYPE == 1) begin
+
+             adder_tree_2_to_1 #(
+               .NUM_ELEMENTS(TOT_ELEMENTS),
+               .BIT_LEN(OUT_BIT_LEN)
+             )
+             adder_tree_2_to_1 (
+               .terms(terms),
+               .S(res[i])
+             );
+
+           end else if (ADDER_TYPE == 2) begin
+
+             logic [OUT_BIT_LEN-1:0] Cout_col;
+             logic [OUT_BIT_LEN-1:0] S_col;
+
+             compressor_tree_6_to_3_then_3_to_2 #(
+               .NUM_ELEMENTS(TOT_ELEMENTS),
+               .BIT_LEN(OUT_BIT_LEN)
+             )
+             compressor_tree_6_to_3_then_3_to_2 (
+               .terms(terms),
+               .C2(Cout_col),
+               .S(S_col)
+             );
+
+             always_comb begin
+               res[i] = Cout_col[OUT_BIT_LEN-1:0] + S_col[OUT_BIT_LEN-1:0];
+             end
+
+           end else
+             assert(0, "ERROR - unsupported value for ADDER_TYPE");
+
       end
 
+   // Propigate carry on the boundary depending on direction
    always_comb
      for (int ii = 0; ii < NUM_ELEMENTS*2; ii++)
-       if (ctl_r == 0)
-         res_int[ii] = res[ii][WORD_LEN-1:0] + (ii > 0 ? res[ii-1][OUT_BIT_LEN-1:WORD_LEN] : 0);
-       else if (ctl_r == 1) // Also on the boundary we propigate the carry
-         res_int[ii] = res[ii][WORD_LEN-1:0] + (ii < NUM_ELEMENTS_OUT-1 ? res[ii+1][OUT_BIT_LEN-1:WORD_LEN] : 0);
-       else
-         res_int[ii] = res[ii][WORD_LEN-1:0] + (ii > 0 ? res[ii-1][OUT_BIT_LEN-1:WORD_LEN] : 0);
+       case (ctl_r)
+         0: begin
+           res_int[ii] = res[ii][WORD_LEN-1:0] + (ii > 0 ? res[ii-1][OUT_BIT_LEN-1:WORD_LEN] : 0);
+         end
+         1: begin
+           res_int[ii] = res[ii][WORD_LEN-1:0] + (ii < NUM_ELEMENTS_OUT-1 ? res[ii+1][OUT_BIT_LEN-1:WORD_LEN] : 0);
+         end
+         2: begin
+           res_int[ii] = res[ii][WORD_LEN-1:0] + (ii > 0 ? res[ii-1][OUT_BIT_LEN-1:WORD_LEN] : 0);
+         end
+       endcase
 
    endgenerate
 
    always_ff @ (posedge i_clk)
-     for (int i = 0; i < NUM_ELEMENTS*2; i++) // Also check for bit overflow here (not on square)
-       if (i == NUM_ELEMENTS-1 && ctl_r == 1)
-         o_dat[i] <= res_int[i] + res_int[NUM_ELEMENTS][WORD_LEN];
-       else if (i == NUM_ELEMENTS && ctl_r == 1)
-         o_dat[i] <= res_int[i][WORD_LEN-1:0];
-       else
-         o_dat[i] <= res_int[i];
-
+     for (int i = 0; i < NUM_ELEMENTS*2; i++) // Also check for bit overflow here if in mode 1
+       case (ctl_r)
+         0: begin
+           o_dat[i] <= res_int[i];
+         end
+         1: begin
+           if (i == NUM_ELEMENTS-1)
+             o_dat[i] <= res_int[i] + res_int[NUM_ELEMENTS][WORD_LEN];
+           else if (i == NUM_ELEMENTS && ctl_r == 1)
+             o_dat[i] <= res_int[i][WORD_LEN-1:0];
+           else
+             o_dat[i] <= res_int[i];
+         end
+         2: begin
+           o_dat[i] <= res_int[i];
+         end
+       endcase
 endmodule

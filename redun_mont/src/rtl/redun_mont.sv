@@ -31,12 +31,13 @@ localparam COL_BIT_LEN = 2*(WRD_BITS+1) - WRD_BITS;
 localparam OUT_BIT_LEN = COL_BIT_LEN + $clog2(NUM_WRDS);
 localparam MULT_CYCLES = 2'd1;
 
-redun0_t mul_a, mul_b, hmul_a, hmul_b, hmul_out_h, tmp_h;
-redun1_t tmp,  sqr_out;
+redun0_t mul_a, mul_b, hmul_a, hmul_b, hmul_out_h, tmp_h, tmp_zero;
+redun1_t tmp,  sqr_out, mult_out;
 redun2_t hmul_out;
 
 
 logic hmul_ctl;
+logic val, val_o;
 
 logic [1:0] cnt;
 enum {IDLE, MUL0, MUL1, MUL2, ADD0, FULL_MULT} state;
@@ -46,7 +47,7 @@ always_comb begin
   for (int i = 0; i < NUM_WRDS; i++)
     hmul_out_h[i] = hmul_out[NUM_WRDS-1-i];
     
-  hmul_a = sqr_out[0:NUM_WRDS-1];
+  hmul_a = mult_out[0:NUM_WRDS-1];//sqr_out[0:NUM_WRDS-1];
   hmul_b = to_redun(MONT_FACTOR);
   
   case(state)
@@ -55,7 +56,7 @@ always_comb begin
       mul_b = i_sq;
     end
     MUL0: begin // Squaring
-      hmul_a = sqr_out[0:NUM_WRDS-1];
+      hmul_a = mult_out[0:NUM_WRDS-1];//sqr_out[0:NUM_WRDS-1];
       hmul_b = to_redun(MONT_FACTOR);
     end
     MUL1: begin 
@@ -75,6 +76,7 @@ end
 always_ff @ (posedge i_clk) begin
   if (i_rst) begin
     cnt <= 0;
+    val <= 0;
     o_overflow <= 0;
     o_val <= 0;
     o_mul <= to_redun(0);
@@ -84,11 +86,13 @@ always_ff @ (posedge i_clk) begin
       tmp[i] <= 0;
     end
     tmp_h <= to_redun(0);
+    tmp_zero <= to_redun(0);
   end else begin
     o_val <= 0;
     cnt <= cnt + 1;
+    val <= val_o;
     for (int i = 0; i < NUM_WRDS; i++) begin
-      tmp_h[i] <= sqr_out[NUM_WRDS+i];
+      tmp_h[i] <= mult_out[NUM_WRDS+i]; //sqr_out[NUM_WRDS+i]; // + i == 0 ? 1 : 0;
     end    
     case(state)
       IDLE: begin
@@ -100,7 +104,7 @@ always_ff @ (posedge i_clk) begin
         tmp_h <= to_redun(0);
         if(cnt == MULT_CYCLES) begin
           state <= MUL1;
-          tmp <= sqr_out;
+          tmp <= mult_out;//sqr_out;
           hmul_ctl <= 1;
           cnt <= 0;
         end
@@ -125,6 +129,8 @@ always_ff @ (posedge i_clk) begin
         hmul_ctl <= 1; // Need to get upper words
       end
     endcase
+    
+    val <= i_val;
 
     if (i_val) begin
       cnt <= 0;
@@ -168,6 +174,23 @@ squarer0 (
   .A   ( mul_a ),
   .B   ( mul_b ),
   .out ( sqr_out  )
+);
+
+multi_mode_multiplier #(
+  .NUM_ELEMENTS (NUM_WRDS),
+  .DSP_BIT_LEN (WRD_BITS+1),
+  .WORD_LEN (WRD_BITS),
+  .NUM_ELEMENTS_OUT(NUM_WRDS+SPECULATIVE_CARRY_WRDS)
+)
+multi_mode_multiplier (
+  .i_clk ( i_clk ),
+  .i_val ( val   ),
+  .i_ctl ( 2'd2  ),
+  .i_dat_a ( mul_a),
+  .i_dat_b ( mul_b ),
+  .i_add_term (tmp_zero),
+  .o_dat (mult_out),
+  .o_val ( val_o )
 );
 
 
