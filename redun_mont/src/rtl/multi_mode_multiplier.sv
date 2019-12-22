@@ -31,11 +31,13 @@ module multi_mode_multiplier
     )
    (
     input  logic                       i_clk,
+    input                              i_val,
     input  logic [1:0]                 i_ctl,
     input  logic [DSP_BIT_LEN-1:0]     i_dat_a[NUM_ELEMENTS],
     input  logic [DSP_BIT_LEN-1:0]     i_dat_b[NUM_ELEMENTS],
     input  logic [DSP_BIT_LEN-1:0]     i_add_term[NUM_ELEMENTS],
-    output logic [DSP_BIT_LEN-1:0]     o_dat[NUM_ELEMENTS*2]
+    output logic [DSP_BIT_LEN-1:0]     o_dat[NUM_ELEMENTS*2],
+    output logic                       o_val
    );
 
    localparam int OUT_BIT_LEN = (2*DSP_BIT_LEN - WORD_LEN) + $clog2(2*NUM_ELEMENTS+1);
@@ -44,20 +46,23 @@ module multi_mode_multiplier
    logic [DSP_BIT_LEN-1:0]   res_int[NUM_ELEMENTS*2];
 
    logic [OUT_BIT_LEN-1:0]   add_r[NUM_ELEMENTS];
-   logic [DSP_BIT_LEN*2-1:0] mul_result[NUM_ELEMENTS*NUM_ELEMENTS];
+   logic [DSP_BIT_LEN*2-1:0] mul_result[NUM_ELEMENTS][NUM_ELEMENTS];
    logic [OUT_BIT_LEN-1:0]   grid[NUM_ELEMENTS*2][NUM_ELEMENTS*2];
 
    logic [1:0] ctl_r;
+   logic val_r;
 
    always_ff @ (posedge i_clk) begin
      ctl_r <= i_ctl;
+     val_r <= i_val;
+     o_val <= val_r;
      for (int i = 0; i < NUM_ELEMENTS; i++) begin
        if (i_ctl == 0) begin
          add_r[i] <= 0;
          add_r[i] <= i_add_term[i];
        end else if (i_ctl == 1) begin
          add_r[NUM_ELEMENTS-i-1] <= 0;
-         add_r[NUM_ELEMENTS-i-1] <= i_add_term[i] + (i == 0 ? 1 : 0);
+         add_r[NUM_ELEMENTS-i-1] <= i_add_term[i];// make sure we add one in here;
        end else if (i_ctl == 2) begin
          add_r[i] <= 0;
          add_r[i] <= i_add_term[i];
@@ -73,7 +78,6 @@ module multi_mode_multiplier
       for (i=0; i<NUM_ELEMENTS; i=i+1) begin : mul_A
          for (j=0; j<NUM_ELEMENTS; j=j+1) begin : mul_B
            if (i+j < NUM_ELEMENTS_OUT) begin
-
               logic [DSP_BIT_LEN-1:0] mul_a, mul_b;
               always_comb begin
                 case(i_ctl)
@@ -88,7 +92,7 @@ module multi_mode_multiplier
                     mul_b = i_dat_b[NUM_ELEMENTS-j-1];
                   end
                   2: begin
-                    // Square - elements in upper diagonal are reflected horizontally (e.g. i > j)
+                    // Square - elements in upper diagonal are reflected horizontally
                     if (i > j) begin
                       mul_a = i_dat_a[i];
                       mul_b = i_dat_b[NUM_ELEMENTS-j-1];
@@ -106,10 +110,10 @@ module multi_mode_multiplier
                           .clk(i_clk),
                           .A(mul_a),
                           .B(mul_b),
-                          .P(mul_result[(NUM_ELEMENTS*i)+j])
+                          .P(mul_result[i][j])
                          );
             end else begin
-              always_comb mul_result[(NUM_ELEMENTS*i)+j] = 0;
+              always_comb mul_result[i][j] = 0;
             end
          end
       end
@@ -127,33 +131,35 @@ module multi_mode_multiplier
          for (jj=0; jj<NUM_ELEMENTS; jj=jj+1) begin : grid_col
            case(ctl_r)
             0: begin
-              grid[(ii+jj)][(2*ii)]       = mul_result[(NUM_ELEMENTS*ii)+jj][WORD_LEN-1 : 0];
-              grid[(ii+jj+1)][((2*ii)+1)] = mul_result[(NUM_ELEMENTS*ii)+jj][2*DSP_BIT_LEN-1 : WORD_LEN];
+              grid[(ii+jj)][(2*ii)]       = mul_result[ii][jj][WORD_LEN-1 : 0];
+              grid[(ii+jj+1)][((2*ii)+1)] = mul_result[ii][jj][2*DSP_BIT_LEN-1 : WORD_LEN];
             end
             1: begin
-              grid[(ii+jj+1)][((2*ii)+1)] = mul_result[(NUM_ELEMENTS*ii)+jj][WORD_LEN-1 : 0];
-              grid[(ii+jj)][(2*ii)]       = mul_result[(NUM_ELEMENTS*ii)+jj][2*DSP_BIT_LEN-1 : WORD_LEN];
+              grid[(ii+jj+1)][((2*ii)+1)] = mul_result[ii][jj][WORD_LEN-1 : 0];
+              grid[(ii+jj)][(2*ii)]       = mul_result[ii][jj][2*DSP_BIT_LEN-1 : WORD_LEN];
             end
             2: begin
-              // Up to half way is normal
-              if (ii+jj < NUM_ELEMENTS_OUT) begin
-                if (ii==jj) begin
-                  grid[(ii+jj)][(2*ii)]       = mul_result[(NUM_ELEMENTS*ii)+jj][WORD_LEN-1 : 0];
-                  grid[(ii+jj+1)][((2*ii)+1)] = mul_result[(NUM_ELEMENTS*ii)+jj][2*DSP_BIT_LEN-1 : WORD_LEN];
+              if (ii <= jj) begin
+                if (ii+jj < NUM_ELEMENTS) begin
+                  if (ii == jj) begin
+                    grid[(ii+jj)][(2*ii)]       = mul_result[ii][jj][WORD_LEN-1 : 0];
+                    grid[(ii+jj+1)][((2*ii)+1)] = mul_result[ii][jj][2*DSP_BIT_LEN-1 : WORD_LEN];
+                  end else begin
+                    grid[(ii+jj)][(2*ii)]       = {mul_result[ii][jj][WORD_LEN-2 : 0], 1'b0};
+                    grid[(ii+jj+1)][((2*ii)+1)] =  mul_result[ii][jj][2*DSP_BIT_LEN-1 : WORD_LEN-1];
+                  end
                 end else begin
-                  grid[(ii+jj)][(2*ii)]       = {mul_result[(NUM_ELEMENTS*ii)+jj][WORD_LEN-1 : 0], 1'b0};
-                  grid[(ii+jj+1)][((2*ii)+1)] = mul_result[(NUM_ELEMENTS*ii)+jj][2*DSP_BIT_LEN-1 : WORD_LEN-1];
-                end  
-              end // Everything below takes reflected value
-                if (ii==jj) begin
-                  grid[(ii+jj)][(2*ii)]       = mul_result[(NUM_ELEMENTS*ii)+(NUM_ELEMENTS-jj-1)][WORD_LEN-1 : 0];
-                  grid[(ii+jj+1)][((2*ii)+1)] = mul_result[(NUM_ELEMENTS*ii)+(NUM_ELEMENTS-jj-1)][2*DSP_BIT_LEN-1 : WORD_LEN];
-                end else begin
-                  grid[(ii+jj)][(2*ii)]       = {mul_result[(NUM_ELEMENTS*ii)+(NUM_ELEMENTS-jj-1)][WORD_LEN-1 : 0], 1'b0};
-                  grid[(ii+jj+1)][((2*ii)+1)] = mul_result[(NUM_ELEMENTS*ii)+(NUM_ELEMENTS-jj-1)][2*DSP_BIT_LEN-1 : WORD_LEN-1];
-                end  
+                  if (ii == jj) begin
+                    grid[(ii+jj)][(2*ii)]       = mul_result[ii][NUM_ELEMENTS-jj-1][WORD_LEN-1 : 0];
+                    grid[(ii+jj+1)][((2*ii)+1)] = mul_result[ii][NUM_ELEMENTS-jj-1][2*DSP_BIT_LEN-1 : WORD_LEN];
+                  end else begin
+                    grid[(ii+jj)][(2*ii)]       = {mul_result[ii][NUM_ELEMENTS-jj-1][WORD_LEN-2 : 0], 1'b0};
+                    grid[(ii+jj+1)][((2*ii)+1)] =  mul_result[ii][NUM_ELEMENTS-jj-1][2*DSP_BIT_LEN-1 : WORD_LEN-1];
+                  end
+                end
               end
-            endcase
+            end
+          endcase
          end
       end
    end
@@ -177,7 +183,7 @@ module multi_mode_multiplier
          localparam integer TOT_ELEMENTS = CUR_ELEMENTS + (i < NUM_ELEMENTS);
 
          logic [OUT_BIT_LEN-1:0] terms [TOT_ELEMENTS];
-         if (i < NUM_ELEMENTS_OUT)
+         if (i < NUM_ELEMENTS)
            always_comb begin
              terms = {grid[i][GRID_INDEX:(GRID_INDEX + CUR_ELEMENTS - 1)], add_r[i]};
            end

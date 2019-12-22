@@ -25,7 +25,7 @@ localparam NUM_WRDS = 3;
 localparam WRD_BITS = 16;
 localparam NUM_ELEMENTS_OUT = NUM_WRDS;
 
-typedef logic [NUM_ELEMENTS_OUT*(WRD_BITS+1)-1:0] fe_t;
+typedef logic [NUM_WRDS*2*(WRD_BITS+1)-1:0] fe_t;
 typedef logic [WRD_BITS:0] redun0_t [NUM_WRDS];
 typedef logic [WRD_BITS:0] redun1_t [NUM_WRDS*2];
 
@@ -49,6 +49,8 @@ multi_mode_multiplier (
   .i_clk   ( clk ),
   .i_ctl   ( ctl ),
   .i_add_term ( add_term ),
+  .i_val (0),
+  .o_val(),
   .i_dat_a ( ina ),
   .i_dat_b ( inb ),
   .o_dat   ( out )
@@ -78,27 +80,27 @@ initial begin
   inb = to_redun(0);
   add_term = to_redun(0);
 
-  ina[0] = 16'h1;
+  ina[0] = 16'h2;
   ina[1] = 16'h1;
-  ina[2] = 16'h1;
+  ina[2] = 16'hFFFF;
   
-  inb[0] = 16'h1;
+  inb[0] = 16'h2;
   inb[1] = 16'h1;
-  inb[2] = 16'h1;
+  inb[2] = 16'hFFFF;
 
   ctl = 0;
-  $display("in_a %d, in_b %d", from_redun0(ina), from_redun0(inb));
+  $display("in_a 0x%x, in_b 0x%x", from_redun0(ina), from_redun0(inb));
   repeat(10) @(posedge clk);
-  $display("Result %d", from_redun1(out));
+  $display("Result 0x%x", from_redun1(out));
 
 
   ctl = 1;
   repeat(10) @(posedge clk);
-  $display("Result %d", from_redun1(out));
+  $display("Result 0x%x", from_redun1(out));
   
   ctl = 2;
   repeat(10) @(posedge clk);
-  $display("Result %d, expected %d", from_redun1(out), from_redun0(ina)*from_redun0(ina));
+  $display("Result 0x%x\nExpect 0x%x", from_redun1(out), from_redun0(ina)*from_redun0(ina));
 
   #1us $finish();
 end
