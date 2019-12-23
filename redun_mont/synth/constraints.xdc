@@ -1,6 +1,1 @@
-create_clock -period 5.000 -name clk -waveform {0.000 2.500} [get_ports clk]
-
-
-
-set_property USER_SLR_ASSIGNMENT SLR0 [get_cells redun_mont/half_multiply]
-set_property USER_SLR_ASSIGNMENT SLR1 [get_cells redun_mont/squarer0]
+create_clock -period 8.000 -name i_clk -waveform {0.000 4.000} [get_ports i_clk]  # 125MHz input reference clock
