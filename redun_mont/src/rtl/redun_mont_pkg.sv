@@ -40,6 +40,7 @@ package redun_mont_pkg;
   typedef logic [WRD_BITS:0] redun1_t [NUM_WRDS*2];
   typedef logic [WRD_BITS:0] redun2_t [NUM_WRDS+SPECULATIVE_CARRY_WRDS];
   typedef logic [DAT_BITS-1:0] fe_t;
+  typedef logic [2*DAT_BITS-1:0] fe1_t;
 
   function speculative_carry(input redun1_t in); // Do we need to look at redundant bits?
     speculative_carry = 0;
@@ -51,6 +52,11 @@ package redun_mont_pkg;
     for (int i = 0; i < NUM_WRDS; i++)
       to_redun[i] = in[i*WRD_BITS +: WRD_BITS];
   endfunction
+  
+  function redun1_t to_redun1(input fe1_t in);
+    for (int i = 0; i < NUM_WRDS*2; i++)
+      to_redun1[i] = in[i*WRD_BITS +: WRD_BITS];
+  endfunction  
 
   function fe_t from_redun(input redun0_t in);
     from_redun = 0;
