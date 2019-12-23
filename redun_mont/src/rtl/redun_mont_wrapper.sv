@@ -1,18 +1,17 @@
 /*
   Copyright (C) 2019  Benjamin Devlin
 
-  This program is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
 
-  This program is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
+    http://www.apache.org/licenses/LICENSE-2.0
 
-  You should have received a copy of the GNU General Public License
-  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
  */
 
 module redun_wrapper
@@ -52,7 +51,7 @@ end
 // Clock wizard to generate clock
 clk_wiz_0 inst (
   .clk_out1( clk_int  ),
-  .reset   ( i_reset  ), 
+  .reset   ( i_reset  ),
   .locked  ( locked_o ),
   .clk_in1 ( i_clk    )
 );
@@ -65,12 +64,12 @@ generate
       fifo_generator_16 async_fifo_in (
         .rst    ( i_reset || ~locked[4] ),
         .wr_clk ( i_clk       ),
-        .rd_clk ( clk_int     ), 
+        .rd_clk ( clk_int     ),
         .din    ( i_sq_in[gi] ),
         .wr_en  ( i_start     ),
         .rd_en  ( 1'd1        ),
         .dout   ( sq_in[gi]   ),
-        .full   (), 
+        .full   (),
         .empty  ( fifo_in_empty[gi] ),
         .wr_rst_busy(),
         .rd_rst_busy()
@@ -78,12 +77,12 @@ generate
       fifo_generator_16 async_fifo_out (
         .rst    ( i_reset || ~locked[4] ),
         .wr_clk ( clk_int      ),
-        .rd_clk ( i_clk        ), 
+        .rd_clk ( i_clk        ),
         .din    ( mul_o[gi]    ),
         .wr_en  ( valid_o      ),
         .rd_en  ( 1'd1         ),
         .dout   ( o_sq_out[gi] ),
-        .full   (), 
+        .full   (),
         .empty  ( fifo_out_empty[gi] ),
         .wr_rst_busy(),
         .rd_rst_busy()
@@ -92,12 +91,12 @@ generate
       fifo_generator_32 async_fifo_in (
         .rst    ( i_reset || ~locked[4] ),
         .wr_clk ( i_clk       ),
-        .rd_clk ( clk_int     ), 
+        .rd_clk ( clk_int     ),
         .din    ( i_sq_in[gi] ),
         .wr_en  ( i_start     ),
         .rd_en  ( 1'd1        ),
         .dout   ( sq_in[gi]   ),
-        .full   (), 
+        .full   (),
         .empty  ( fifo_in_empty[gi] ),
         .wr_rst_busy(),
         .rd_rst_busy()
@@ -105,18 +104,18 @@ generate
       fifo_generator_32 async_fifo_out (
         .rst    ( i_reset || ~locked[4] ),
         .wr_clk ( clk_int      ),
-        .rd_clk ( i_clk        ), 
+        .rd_clk ( i_clk        ),
         .din    ( mul_o[gi]    ),
         .wr_en  ( valid_o      ),
         .rd_en  ( 1'd1         ),
         .dout   ( o_sq_out[gi] ),
-        .full   (), 
+        .full   (),
         .empty  ( fifo_out_empty[gi] ),
         .wr_rst_busy(),
         .rd_rst_busy()
       );
     end else $fatal(1, "Unsupported WRD_BITS");
-  
+
   end
 endgenerate
 

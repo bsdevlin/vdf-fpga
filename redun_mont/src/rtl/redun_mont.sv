@@ -1,18 +1,17 @@
 /*
   Copyright (C) 2019  Benjamin Devlin
 
-  This program is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
 
-  This program is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
+    http://www.apache.org/licenses/LICENSE-2.0
 
-  You should have received a copy of the GNU General Public License
-  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
  */
 
 module redun_mont
@@ -54,14 +53,14 @@ always_comb begin
     end
     MUL0: begin // Squaring
       mul_a = mult_out[0:NUM_WRDS-1];
-      mul_b = to_redun(MONT_FACTOR);          
+      mul_b = to_redun(MONT_FACTOR);
     end
-    MUL1: begin 
+    MUL1: begin
       mul_a = mult_out[0:NUM_WRDS-1];
       mul_a[NUM_WRDS-1][WRD_BITS] = 0;
       mul_b = to_redun(P);
     end
-    MUL2: begin     
+    MUL2: begin
       mul_a = hmul_out_h;
       mul_b = hmul_out_h;
     end
@@ -98,12 +97,12 @@ always_ff @ (posedge i_clk) begin
         if(cnt == MULT_CYCLES) begin
           state <= MUL1;
           cnt <= 0;
-          
+
           // TODO pipeline this with mult_out_r
         for (int i = 0; i < NUM_WRDS; i++) begin
           tmp_h[i] <= mult_out[NUM_WRDS+i];// + i == 0 ? 1 : 0;
-        end 
-          
+        end
+
         end
       end
       MUL1: begin
@@ -116,7 +115,7 @@ always_ff @ (posedge i_clk) begin
           cnt <= 0;
         end
       end
-      MUL2: begin 
+      MUL2: begin
         ctl <= 2;
         tmp_h <= to_redun(0);
         if(cnt == MULT_CYCLES) begin
