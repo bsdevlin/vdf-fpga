@@ -20,17 +20,17 @@ module redun_mont_tb ();
 import redun_mont_pkg::*;
 import common_pkg::*;
 
-localparam CLK_PERIOD = 100;
+localparam CLK_PERIOD = 2000;
 localparam NUM_ITERATIONS = 100000;
 
-logic clk, rst;
+logic clk, rst, locked;
 redun0_t in, out;
 logic in_val, out_val, overflow;
 // This is the max size we can expect on the output
 
 initial begin
   rst = 0;
-  repeat(2) #(10*CLK_PERIOD) rst = ~rst;
+  repeat(2) #(20*CLK_PERIOD) rst = ~rst;
 end
 
 initial begin
@@ -39,14 +39,14 @@ initial begin
 end
 
 
-redun_mont redun_mont (
-  .i_clk ( clk   ),
-  .i_rst ( rst   ),
-  .i_sq  ( in    ),
-  .i_val ( in_val ),
-  .o_mul ( out ),
-  .o_val ( out_val ),
-  .o_overflow(overflow)
+redun_wrapper redun_wrapper (
+  .i_clk    ( clk     ),
+  .i_reset  ( rst     ),
+  .i_sq_in  ( in      ),
+  .i_start  ( in_val  ),
+  .o_sq_out ( out     ),
+  .o_valid  ( out_val ),
+  .o_locked ( locked  )
 );
 
 
@@ -55,7 +55,11 @@ initial begin
   int i;
   in_val = 0;
   in = to_redun(0);
-
+  @(posedge clk);
+  // Wait for reset pulse and then lock
+  while (rst != 1) @(posedge clk);
+  while (locked != 1) @(posedge clk);
+  
   repeat (20) @(posedge clk);
 
   a = 2; // Our starting value
