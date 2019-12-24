@@ -1,5 +1,6 @@
 /*******************************************************************************
   Copyright 2019 Supranational LLC
+  Copyright 2019 Benjamin Devlin
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -59,7 +60,7 @@ module half_multiply
     input  logic                       i_sqr, // Sqr mode
     input  logic [DSP_BIT_LEN-1:0]     A[NUM_ELEMENTS],
     input  logic [DSP_BIT_LEN-1:0]     B[NUM_ELEMENTS],
-    input  logic [DSP_BIT_LEN-1:0]     ADD_i[NUM_ELEMENTS],  
+    input  logic [DSP_BIT_LEN-1:0]     ADD_i[NUM_ELEMENTS],
     output logic [DSP_BIT_LEN-1:0]     out[NUM_ELEMENTS_OUT]
    );
 
@@ -148,15 +149,15 @@ module half_multiply
          localparam integer GRID_INDEX   = (i < NUM_ELEMENTS) ?
                                               0 :
                                               (((i - NUM_ELEMENTS) * 2) + 1);
-                                              
-         localparam integer TOT_ELEMENTS = CUR_ELEMENTS + (i < NUM_ELEMENTS);    
-                                              
+
+         localparam integer TOT_ELEMENTS = CUR_ELEMENTS + (i < NUM_ELEMENTS);
+
          logic [OUT_BIT_LEN-1:0] terms [TOT_ELEMENTS];
          if (i < NUM_ELEMENTS)
            always_comb terms = {grid[i][GRID_INDEX:(GRID_INDEX + CUR_ELEMENTS - 1)], ADD_r[i]};
          else
            always_comb terms = grid[i][GRID_INDEX:(GRID_INDEX + CUR_ELEMENTS - 1)];
-                                      
+
            adder_tree_2_to_1 #(
              .NUM_ELEMENTS(TOT_ELEMENTS),
              .BIT_LEN(OUT_BIT_LEN)
@@ -166,14 +167,14 @@ module half_multiply
              .S(res[i])
            );
       end
-      
+
    always_comb
      for (int ii = 0; ii < NUM_ELEMENTS_OUT; ii++)
        if (ctl_r == 0)
          res_int[ii] = res[ii][WORD_LEN-1:0] + (ii > 0 ? res[ii-1][OUT_BIT_LEN-1:WORD_LEN] : 0);
        else // Also on the boundary we propigate the carry
          res_int[ii] = res[ii][WORD_LEN-1:0] + (ii < NUM_ELEMENTS_OUT-1 ? res[ii+1][OUT_BIT_LEN-1:WORD_LEN] : 0);
-         
+
    endgenerate
 
    always_ff @ (posedge clk)

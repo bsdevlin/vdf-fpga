@@ -1,4 +1,5 @@
 /*******************************************************************************
+  Copyright 2019 Supranational LLC
   Copyright 2019 Benjamin Devlin
 
   Licensed under the Apache License, Version 2.0 (the "License");
