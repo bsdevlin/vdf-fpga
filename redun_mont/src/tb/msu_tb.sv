@@ -18,6 +18,7 @@
 module msu_tb ();
 
 import common_pkg::*;
+import redun_mont_pkg::*;
 
 localparam int            CLK_PERIOD = 8000;  // Reference clock is 125MHz
 localparam int            NUM_ITERATIONS = 100000;
@@ -28,8 +29,8 @@ localparam AXI_LEN = 32;
 logic clk, rst;
 
 
-if_axi_stream #(.DAT_BITS(AXI_LEN), .CTL_BITS(1)) s_axis_if (clk); // Input stream
-if_axi_stream #(.DAT_BITS(AXI_LEN), .CTL_BITS(1)) m_axis_if (clk); // Output stream
+if_axi_stream #(.DAT_BYTS(AXI_LEN/8), .CTL_BITS(1)) s_axis_if (clk); // Input stream
+if_axi_stream #(.DAT_BYTS(AXI_LEN/8), .CTL_BITS(1)) m_axis_if (clk); // Output stream
 
 logic [AXI_LEN/8-1:0] m_axis_if_keep;
 
@@ -82,7 +83,8 @@ msu msu (
 );
 
 initial begin
-  fe_t in_dat, out_dat;
+  logic [common_pkg::MAX_SIM_BYTS*8-1:0] in_dat, out_dat;
+  integer signed out_len;
   s_axis_if.reset_source();
   m_axis_if.rdy = 0;
   ap_start = 0;
@@ -100,7 +102,7 @@ initial begin
   s_axis_if.put_stream(in_dat, (TOT_BITS+7)/8);
 
   // Wait for result
-  m_axis_if.get_stream(out_dat, (TOT_BITS+7)/8, 0);
+  m_axis_if.get_stream(out_dat, out_len, 0);
 
   #1us $finish();
 end

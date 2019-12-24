@@ -141,7 +141,6 @@ always_ff @ (posedge i_clk) begin
   end
 end
 
-
 multi_mode_multiplier #(
   .NUM_ELEMENTS (NUM_WRDS),
   .DSP_BIT_LEN (WRD_BITS+1),
@@ -159,6 +158,5 @@ multi_mode_multiplier (
   .o_dat      ( mult_out ),
   .o_val      ( val_o    )
 );
-
 
 endmodule

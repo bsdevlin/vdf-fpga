@@ -14,8 +14,7 @@
   limitations under the License.
 */
 
-`include "msuconfig.vh"
-
+//`include "msuconfig.vh"
 
 module msu
   import redun_mont_pkg::*;
@@ -24,8 +23,8 @@ module msu
     parameter int AXI_LEN               = 32,
     parameter int C_XFER_SIZE_WIDTH     = 32,
 
-    parameter int SQ_IN_BITS            = TOT_BITS, // Input and output use same bit width
-    parameter int SQ_OUT_BITS           = TOT_BITS,
+    parameter int SQ_IN_BITS            = redun_mont_pkg::TOT_BITS, // Input and output use same bit width
+    parameter int SQ_OUT_BITS           = redun_mont_pkg::TOT_BITS,
     parameter int T_LEN                 = 64
     )
    (
@@ -98,10 +97,7 @@ module msu
    logic [C_XFER_SIZE_WIDTH-1:0] axi_out_count;
    logic                         axi_in_shift;
 
-
    genvar                        gi;
-
-   redun0_t sq_in_int, sq_out_int;
 
    // Xilinx recommends clocking reset.
    logic        reset_1d;
@@ -199,7 +195,8 @@ module msu
    // Modsqr function
    //////////////////////////////////////////////////////////////////////
 
-
+    redun0_t sq_in_int, sq_out_int;
+    
     redun_wrapper redun_wrapper (
       .i_clk    ( clk     ),
       .i_reset  ( reset || reset_1d || state == STATE_RECV ),
