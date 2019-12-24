@@ -96,6 +96,8 @@ module msu
    logic [AXI_OUT_BITS-1:0]      axi_out;
    logic [C_XFER_SIZE_WIDTH-1:0] axi_out_count;
    logic                         axi_in_shift;
+   
+   logic locked;
 
    genvar                        gi;
 
@@ -189,7 +191,7 @@ module msu
 
    assign sq_start                  = state == STATE_START;
    assign s_axis_xfer_size_in_bytes = (AXI_IN_COUNT*AXI_BYTES_PER_TXN);
-   assign s_axis_tready             = (state == STATE_RECV);
+   assign s_axis_tready             = (state == STATE_RECV) && locked;
 
    //////////////////////////////////////////////////////////////////////
    // Modsqr function
@@ -199,18 +201,18 @@ module msu
     
     redun_wrapper redun_wrapper (
       .i_clk    ( clk     ),
-      .i_reset  ( reset || reset_1d || state == STATE_RECV ),
+      .i_reset  ( reset || reset_1d || state == STATE_PREPARE_SEND || state == STATE_INIT ),
       .i_sq_in  ( sq_in_int ),
       .i_start  ( sq_start  ),
       .o_sq_out ( sq_out_int ),
       .o_valid  ( sq_finished ),
-      .o_locked ()
+      .o_locked ( locked      )
     );
 
     // Convert our data type
     always_comb begin
       for (int i = 0; i < NUM_WRDS; i++) begin
-        sq_in_int[i] = sq_in[i*(WRD_BITS+1) +: (WRD_BITS+1)];
+        sq_in_int[i] = sq_in[i*WRD_BITS +: WRD_BITS]; // Input we don't have redundant bit
         sq_out[i*(WRD_BITS+1) +: (WRD_BITS+1)] = sq_out_int[i];
       end
     end
@@ -236,7 +238,7 @@ module msu
    assign m_axis_tvalid             = (state == STATE_SEND &&
                                        axi_out_count < AXI_OUT_COUNT);
    assign m_axis_tdata              = axi_out[AXI_LEN-1:0];
-   assign m_axis_tlast              = 0;
+   assign m_axis_tlast              = axi_out_count == AXI_OUT_COUNT-1;
    assign m_axis_tkeep              = {(AXI_LEN/8){1'b1}};
    assign start_xfer                = state == STATE_PREPARE_SEND;
    assign ap_done                   = state == STATE_IDLE;

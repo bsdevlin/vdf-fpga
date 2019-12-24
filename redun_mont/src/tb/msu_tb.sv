@@ -22,7 +22,7 @@ import redun_mont_pkg::*;
 
 localparam int            CLK_PERIOD = 8000;  // Reference clock is 125MHz
 localparam [T_LEN-1:0]    START_CNT = 0;
-localparam [T_LEN-1:0]    END_CNT = 100000;
+localparam [T_LEN-1:0]    END_CNT = 10;
 localparam [DAT_BITS-1:0] INIT_VALUE = 2;
 
 localparam AXI_LEN = 32;
@@ -106,7 +106,7 @@ initial begin
   ap_start = 0;
 
   // Send in initial value
-  s_axis_if.put_stream(in_dat, (DAT_BITS+7)/8);
+  s_axis_if.put_stream(in_dat, (DAT_BITS+2*T_LEN+7)/8);
 
   // Wait for result
   m_axis_if.get_stream(out_dat, out_len, 0);
