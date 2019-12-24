@@ -21,7 +21,8 @@ import common_pkg::*;
 import redun_mont_pkg::*;
 
 localparam int            CLK_PERIOD = 8000;  // Reference clock is 125MHz
-localparam int            NUM_ITERATIONS = 100000;
+localparam [T_LEN-1:0]    START_CNT = 0;
+localparam [T_LEN-1:0]    END_CNT = 100000;
 localparam [DAT_BITS-1:0] INIT_VALUE = 2;
 
 localparam AXI_LEN = 32;
@@ -62,7 +63,11 @@ end
 
 logic start_xfer, ap_start, ap_done;
 
-msu msu (
+msu #(
+  .AXI_LEN( AXI_LEN ),
+  .T_LEN  ( T_LEN   )
+)
+msu (
   .clk   ( clk ),
   .reset ( rst ),
   .s_axis_tvalid ( s_axis_if.val ),
@@ -88,10 +93,12 @@ initial begin
   s_axis_if.reset_source();
   m_axis_if.rdy = 0;
   ap_start = 0;
+  in_dat = {to_mont(INIT_VALUE), END_CNT, START_CNT};
   @(posedge clk);
-  // Wait for reset
+  // Wait for reset to toggle
   while (rst != 1) @(posedge clk);
-
+  while (rst != 0) @(posedge clk);
+  
   @(posedge clk);
   ap_start = 1;
 
@@ -99,7 +106,7 @@ initial begin
   ap_start = 0;
 
   // Send in initial value
-  s_axis_if.put_stream(in_dat, (TOT_BITS+7)/8);
+  s_axis_if.put_stream(in_dat, (DAT_BITS+7)/8);
 
   // Wait for result
   m_axis_if.get_stream(out_dat, out_len, 0);

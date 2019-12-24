@@ -35,6 +35,10 @@ package redun_mont_pkg;
   //localparam [DAT_BITS-1:0] MONT_FACTOR = 'haf5cb1d1180cf031096710f9d7df19c33c4c4fb744c2a4d0fb04a49015272417ea53b2d8a463736bedc12e78b10d414648af2ae714a5cfffbca8bce7775c3e4c0b7dada4446b97fb8838e56d1321f3e61130c64141bb301eb30018c44b123cc3c1bc4671ce9c166d6a6e4516a7d3ad176b9cf85260839f4d817a13527b910fa9e9bd;
   //localparam [DAT_BITS-1:0] MONT_RECIP_SQ = 'h58b6b1dcb36adcf186462fbda363868143cd067218a255fed7e327077ebab5f2891924b886e600d645be2fa61b6d3a3400f7e12284c85c2db619a3fb89545a3418ec6f222eda770dee9ba482f7963e9b881df2beeb79422f076244f99c486faf82e6b397c0d75519d4e9987bdc91dff1356678097d38ed9b474abcaf2675c32c; // Required for conversion into Montgomery form
   localparam int SPECULATIVE_CARRY_WRDS = 1;
+  
+  // Parameters used by msu interface
+  localparam int T_LEN = 64;
+  localparam int AXI_LEN = 32;
 
   typedef logic [WRD_BITS:0] redun0_t [NUM_WRDS];
   typedef logic [WRD_BITS:0] redun1_t [NUM_WRDS*2];

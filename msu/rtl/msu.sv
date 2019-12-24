@@ -23,8 +23,8 @@ module msu
     parameter int AXI_LEN               = 32,
     parameter int C_XFER_SIZE_WIDTH     = 32,
 
-    parameter int SQ_IN_BITS            = redun_mont_pkg::TOT_BITS, // Input and output use same bit width
-    parameter int SQ_OUT_BITS           = redun_mont_pkg::TOT_BITS,
+    parameter int SQ_IN_BITS            = redun_mont_pkg::DAT_BITS,
+    parameter int SQ_OUT_BITS           = redun_mont_pkg::TOT_BITS, // Output includes redundant bit
     parameter int T_LEN                 = 64
     )
    (
