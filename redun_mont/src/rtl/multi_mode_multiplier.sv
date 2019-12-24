@@ -93,28 +93,24 @@ logic val_r;
            if (i+j < NUM_ELEMENTS_OUT) begin
               logic [DSP_BIT_LEN-1:0] mul_a, mul_b;
               always_comb begin
-                case(i_ctl)
-                  0: begin
-                    // Multiply lower half
+                if (i_ctl == 0) begin
+                  // Multiply lower half
+                  mul_a = i_dat_a[i];
+                  mul_b = i_dat_b[j];
+                end else if (i_ctl == 1) begin
+                  // Multiply upper half
+                  mul_a = i_dat_a[NUM_ELEMENTS-i-1];
+                  mul_b = i_dat_b[NUM_ELEMENTS-j-1];
+                end else begin
+                  // Square - elements in upper diagonal are reflected horizontally
+                  if (i > j) begin
+                    mul_a = i_dat_a[i];
+                    mul_b = i_dat_b[NUM_ELEMENTS-j-1];
+                  end else begin
                     mul_a = i_dat_a[i];
                     mul_b = i_dat_b[j];
                   end
-                  1: begin
-                    // Multiply upper half
-                    mul_a = i_dat_a[NUM_ELEMENTS-i-1];
-                    mul_b = i_dat_b[NUM_ELEMENTS-j-1];
-                  end
-                  2: begin
-                    // Square - elements in upper diagonal are reflected horizontally
-                    if (i > j) begin
-                      mul_a = i_dat_a[i];
-                      mul_b = i_dat_b[NUM_ELEMENTS-j-1];
-                    end else begin
-                      mul_a = i_dat_a[i];
-                      mul_b = i_dat_b[j];
-                    end
-                  end
-                endcase
+                end
               end
 
               multiplier #(
@@ -144,16 +140,13 @@ logic val_r;
 
       for (ii=0; ii<NUM_ELEMENTS; ii=ii+1) begin : grid_row
          for (jj=0; jj<NUM_ELEMENTS; jj=jj+1) begin : grid_col
-           case(ctl_r)
-            0: begin
-              grid[(ii+jj)][(2*ii)]       = mul_result[ii][jj][WORD_LEN-1 : 0];
-              grid[(ii+jj+1)][((2*ii)+1)] = mul_result[ii][jj][2*DSP_BIT_LEN-1 : WORD_LEN];
-            end
-            1: begin
-              grid[(ii+jj+1)][((2*ii)+1)] = mul_result[ii][jj][WORD_LEN-1 : 0];
-              grid[(ii+jj)][(2*ii)]       = mul_result[ii][jj][2*DSP_BIT_LEN-1 : WORD_LEN];
-            end
-            2: begin
+           if (ctl_r == 0) begin
+             grid[(ii+jj)][(2*ii)]       = mul_result[ii][jj][WORD_LEN-1 : 0];
+             grid[(ii+jj+1)][((2*ii)+1)] = mul_result[ii][jj][2*DSP_BIT_LEN-1 : WORD_LEN];
+           end else if (ctl_r == 1) begin
+             grid[(ii+jj+1)][((2*ii)+1)] = mul_result[ii][jj][WORD_LEN-1 : 0];
+             grid[(ii+jj)][(2*ii)]       = mul_result[ii][jj][2*DSP_BIT_LEN-1 : WORD_LEN];
+           end else begin
               if (ii <= jj) begin
                 if (ii+jj < NUM_ELEMENTS) begin
                   if (ii == jj) begin
@@ -174,7 +167,6 @@ logic val_r;
                 end
               end
             end
-          endcase
          end
       end
    end
@@ -264,37 +256,32 @@ logic val_r;
 
    // Propigate carry on the boundary depending on direction
    always_comb
-     for (int ii = 0; ii < NUM_ELEMENTS*2; ii++)
-       case (ctl_r)
-         0: begin
-           res_int[ii] = res[ii][WORD_LEN-1:0] + (ii > 0 ? res[ii-1][OUT_BIT_LEN-1:WORD_LEN] : 0);
-         end
-         1: begin
-           res_int[ii] = res[ii][WORD_LEN-1:0] + (ii < NUM_ELEMENTS_OUT-1 ? res[ii+1][OUT_BIT_LEN-1:WORD_LEN] : 0);
-         end
-         2: begin
-           res_int[ii] = res[ii][WORD_LEN-1:0] + (ii > 0 ? res[ii-1][OUT_BIT_LEN-1:WORD_LEN] : 0);
-         end
-       endcase
+     for (int ii = 0; ii < NUM_ELEMENTS*2; ii++) begin
+       if(ctl_r == 0) begin
+         res_int[ii] = res[ii][WORD_LEN-1:0] + (ii > 0 ? res[ii-1][OUT_BIT_LEN-1:WORD_LEN] : 0);
+       end else if (ctl_r == 1) begin
+         res_int[ii] = res[ii][WORD_LEN-1:0] + (ii < NUM_ELEMENTS_OUT-1 ? res[ii+1][OUT_BIT_LEN-1:WORD_LEN] : 0);
+       end else begin
+         res_int[ii] = res[ii][WORD_LEN-1:0] + (ii > 0 ? res[ii-1][OUT_BIT_LEN-1:WORD_LEN] : 0);
+       end
+     end
 
    endgenerate
 
-   always_ff @ (posedge i_clk)
-     for (int i = 0; i < NUM_ELEMENTS*2; i++) // Also check for bit overflow here if in mode 1
-       case (ctl_r)
-         0: begin
+   always_ff @ (posedge i_clk) begin
+     for (int i = 0; i < NUM_ELEMENTS*2; i++) begin// Also check for bit overflow here if in mode 1
+       if (ctl_r == 0) begin
+         o_dat[i] <= res_int[i];
+       end else if (ctl_r == 1) begin
+         if (i == NUM_ELEMENTS-1)
+           o_dat[i] <= res_int[i] + res_int[NUM_ELEMENTS][WORD_LEN];
+         else if (i == NUM_ELEMENTS && ctl_r == 1)
+           o_dat[i] <= res_int[i][WORD_LEN-1:0];
+         else
            o_dat[i] <= res_int[i];
-         end
-         1: begin
-           if (i == NUM_ELEMENTS-1)
-             o_dat[i] <= res_int[i] + res_int[NUM_ELEMENTS][WORD_LEN];
-           else if (i == NUM_ELEMENTS && ctl_r == 1)
-             o_dat[i] <= res_int[i][WORD_LEN-1:0];
-           else
-             o_dat[i] <= res_int[i];
-         end
-         2: begin
-           o_dat[i] <= res_int[i];
-         end
-       endcase
+       end else begin
+         o_dat[i] <= res_int[i];
+       end
+     end
+   end
 endmodule
