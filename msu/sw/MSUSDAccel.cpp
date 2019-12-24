@@ -21,7 +21,7 @@
 
 using namespace std;
 
-// Print a buffer in 32 bit words. 
+// Print a buffer in 32 bit words.
 void print_buffer(const char *name, uint32_t *buffer, int size) {
     printf("BUFFER: %s size %d words, %d bytes\n", name, size, size * 4);
     for(int i = 0; i < size; i++) {
@@ -68,7 +68,7 @@ void OpenCLContext::init(int _msu_words_in, int _msu_words_out) {
     OCL_CHECK(err, q =
               new cl::CommandQueue(*context, device,
                                    CL_QUEUE_PROFILING_ENABLE, &err));
-    std::string device_name = device.getInfo<CL_DEVICE_NAME>(); 
+    std::string device_name = device.getInfo<CL_DEVICE_NAME>();
 
     std::string binaryFile = xcl::find_binary_file(device_name, KERNEL_NAME);
     cl::Program::Binaries bins = xcl::import_binary_file(binaryFile);
@@ -81,17 +81,17 @@ void OpenCLContext::init(int _msu_words_in, int _msu_words_out) {
     // Allocate OpenCL buffers in memory
     OCL_CHECK(err, inBuffer =
               new cl::Buffer(*context,
-                             CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY, 
-                             (size_t)msu_words_in*MSU_BYTES_PER_WORD, 
+                             CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY,
+                             (size_t)msu_words_in*MSU_BYTES_PER_WORD,
                              input_buf.data(), &err));
     OCL_CHECK(err, outBuffer =
               new cl::Buffer(*context,
-                             CL_MEM_USE_HOST_PTR | CL_MEM_WRITE_ONLY, 
-                             (size_t)msu_words_out*MSU_BYTES_PER_WORD, 
+                             CL_MEM_USE_HOST_PTR | CL_MEM_WRITE_ONLY,
+                             (size_t)msu_words_out*MSU_BYTES_PER_WORD,
                              output_buf.data(), &err));
     inBufferVec.push_back(*inBuffer);
     outBufferVec.push_back(*outBuffer);
-    
+
     // Set kernel arguments.
     // Not used
     OCL_CHECK(err, err = krnl_vdf->setArg(0, 0));
@@ -114,9 +114,9 @@ void OpenCLContext::compute_job(mpz_t msu_out, mpz_t msu_in) {
     }
     bn_to_buffer(msu_in, input_buf.data(), msu_words_in, true, true);
     //print_buffer_concise("msu_in", input_buf.data(), msu_words_in);
-    
+
     cl_int err;
-    
+
     // DMA the buffers to the FPGA
     OCL_CHECK(err, err = q->enqueueMigrateMemObjects(inBufferVec, 0));
 
@@ -144,7 +144,7 @@ void MSUSDAccel::init(MSU *_msu, Squarer *_squarer) {
     int num_elements = nonredundant_elements + REDUNDANT_ELEMENTS;
     msu_words_in  = (T_LEN/MSU_WORD_LEN*2 + (nonredundant_elements+1)/2);
     msu_words_out = (T_LEN/MSU_WORD_LEN + num_elements);
-    
+
     ocl.init(msu_words_in, msu_words_out);
 }
 
@@ -156,5 +156,5 @@ void MSUSDAccel::compute_job(uint64_t t_start,
     ocl.compute_job(msu_out, msu_in);
 
     uint64_t t_final_out;
-    squarer->unpack(sq_out, &t_final_out, msu_out, WORD_LEN);
+    squarer->unpack(sq_out, &t_final_out, msu_out, WRD_BITS); // WRD_BITS for mont_reduce
 }

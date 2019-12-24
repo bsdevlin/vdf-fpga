@@ -126,7 +126,7 @@ int main(int argc, char** argv, char** env) {
     MSUSDAccel   device;
 #else
     MSUVerilator device(argc, argv);
-#endif    
+#endif
 
 #if defined(SIMPLE_SQ)
   #if defined(DIRECT_TB)
@@ -135,16 +135,18 @@ int main(int argc, char** argv, char** env) {
     Squarer *squarer = new SquarerSimple(mod_len, modulus);
   #endif
 #else
- #if defined(DIRECT_TB)
+ #if defined(REDUN_MONT)
+    Squarer *squarer = new MontReducer(mod_len, modulus);
+ #elif defined(DIRECT_TB)
     Squarer *squarer = new SquarerOzturkDirect(mod_len, modulus);
-  #else
+ #else
     Squarer *squarer = new SquarerOzturk(mod_len, modulus);
-  #endif
+ #endif
 #endif
-    
+
     MSU msu(device, mod_len, modulus);
     msu.set_quiet(quiet);
-    
+
     device.init(&msu, squarer);
     device.set_quiet(quiet);
 
@@ -158,7 +160,7 @@ int main(int argc, char** argv, char** env) {
     int failures = 0;
     uint64_t t_start = 0;
     for(int test = 0; test < test_iterations; test++) {
-        uint64_t iter = 0; 
+        uint64_t iter = 0;
         while(iter < t_final) {
             uint64_t run_t_final = intermediate_iters;
             if(run_t_final + iter > t_final) {
@@ -166,10 +168,10 @@ int main(int argc, char** argv, char** env) {
             }
 
             if(mpz_cmp_ui(sq_in, 0) != 0) {
-                failures += msu.run_fixed(t_start, run_t_final, 
+                failures += msu.run_fixed(t_start, run_t_final,
                                           sq_in, hw_emu);
             } else {
-                failures += msu.run_random(t_start, run_t_final, 
+                failures += msu.run_random(t_start, run_t_final,
                                            rrandom, hw_emu);
             }
 
@@ -181,7 +183,7 @@ int main(int argc, char** argv, char** env) {
                 return(failures);
             }
             if(!hw_emu) {
-                double ns_per_iter = ((double)msu.compute_time / 
+                double ns_per_iter = ((double)msu.compute_time /
                                       (double)run_t_final);
                 gmp_printf("%lu %0.1lf ns/sq: %Zd\n", iter, ns_per_iter,
                            msu.sq_out);

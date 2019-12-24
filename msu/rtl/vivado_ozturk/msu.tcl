@@ -154,7 +154,7 @@ if { $::argc > 0 } {
 set orig_proj_dir "[file normalize "$origin_dir/"]"
 
 # Create project
-create_project ${_xil_proj_name_} ./${_xil_proj_name_} -part xc7s100fgga676-2
+create_project ${_xil_proj_name_} ./${_xil_proj_name_} -part xcvu9p-flga2104-2L-e
 
 # Set the directory path for the new project
 set proj_dir [get_property directory [current_project]]
@@ -855,5 +855,5 @@ move_dashboard_gadget -name {drc_1} -row 2 -col 0
 move_dashboard_gadget -name {timing_1} -row 0 -col 1
 move_dashboard_gadget -name {utilization_2} -row 1 -col 1
 move_dashboard_gadget -name {methodology_1} -row 2 -col 1
-# Set current dashboard to 'default_dashboard' 
-current_dashboard default_dashboard 
+# Set current dashboard to 'default_dashboard'
+current_dashboard default_dashboard

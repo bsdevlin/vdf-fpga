@@ -110,10 +110,12 @@ void MSU::prepare_random_job(bool rrandom) {
 void MSU::compute_job() {
     struct timespec start_ts;
     start_ts = timer_start();
-    
+
     //////////////////////////////////////////////////////////////////////
     // PREPROCESSING goes below this line (Montgomery conversion, etc)
     //
+
+    //TODO
 
     // Perform the computation
     device.compute_job(t_start, t_final, sq_in, sq_out);
@@ -139,7 +141,7 @@ int MSU::check_job() {
     for(uint64_t i = t_start; i < t_final; i++) {
         mpz_powm_ui(expected, expected, 2, modulus);
         //gmp_printf("sq_in^2 is 0x%Zx\n", expected);
-    }       
+    }
 
     if(!quiet) {
         gmp_printf("sq_in    is 0x%Zx\n", sq_in);
@@ -156,7 +158,7 @@ int MSU::check_job() {
     if(failures == 0) {
         printf("MATCH!");
     }
-        
+
     mpz_clears(expected, NULL);
 
     return(failures);

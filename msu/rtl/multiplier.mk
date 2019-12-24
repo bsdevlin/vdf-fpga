@@ -34,15 +34,17 @@ REDUNDANT_ELEMENTS     = 2
 NONREDUNDANT_ELEMENTS ?= $(shell expr $(MOD_LEN) \/ $(WORD_LEN))
 NUM_ELEMENTS           = $(shell expr $(NONREDUNDANT_ELEMENTS) \+ \
 	                              $(REDUNDANT_ELEMENTS))
-WORD_LEN               = 16
-BIT_LEN                = 17
+WORD_LEN               = 32
+NUM_WRDS               = $(shell expr $(MOD_LEN) \/ $(WORD_LEN))
+BIT_LEN                = $(shell expr $(WORD_LEN) \+ 1)
+TOT_BITS               = $(shell expr $(NUM_WRDS) \* $(BIT_LEN))
 
 ifeq ($(SIMPLE_SQ), 1)
 SQ_IN_BITS             = $(MOD_LEN)
 SQ_OUT_BITS            = $(MOD_LEN)
 else
-SQ_IN_BITS             = $(MOD_LEN)
-SQ_OUT_BITS            = $(shell expr $(NUM_ELEMENTS) \* $(WORD_LEN) \* 2)
+SQ_IN_BITS             = $(shell expr $(MOD_LEN) \+ $(WORD_LEN))
+SQ_OUT_BITS            = $TOT_BITS
 endif
 
 # Default modulus for various sizes
