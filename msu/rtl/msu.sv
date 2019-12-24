@@ -16,23 +16,16 @@
 
 `include "msuconfig.vh"
 
-// MSU configuration
-`ifndef SQ_IN_BITS_DEF
- `define SQ_IN_BITS_DEF  1024
-`endif
-`ifndef SQ_OUT_BITS_DEF
- `define SQ_OUT_BITS_DEF 1024
-`endif
-
 
 module msu
+  import redun_mont_pkg::*;
   #(
     // Data width of both input and output data on AXI bus.
     parameter int AXI_LEN               = 32,
     parameter int C_XFER_SIZE_WIDTH     = 32,
 
-    parameter int SQ_IN_BITS            = `SQ_IN_BITS_DEF,
-    parameter int SQ_OUT_BITS           = `SQ_OUT_BITS_DEF,
+    parameter int SQ_IN_BITS            = TOT_BITS, // Input and output use same bit width
+    parameter int SQ_OUT_BITS           = TOT_BITS,
     parameter int T_LEN                 = 64
     )
    (
@@ -48,7 +41,7 @@ module msu
     /* verilator lint_on UNUSED */
     input wire                          s_axis_tlast,
     output wire [C_XFER_SIZE_WIDTH-1:0] s_axis_xfer_size_in_bytes,
-    
+
     // Outgoing AXI interface.
     output wire                         m_axis_tvalid,
     input wire                          m_axis_tready,
@@ -64,15 +57,15 @@ module msu
     );
 
    // Incoming txn count: t_start, t_final, sq_in
-   localparam int AXI_IN_COUNT      = (T_LEN/AXI_LEN*2 + 
+   localparam int AXI_IN_COUNT      = (T_LEN/AXI_LEN*2 +
                                        SQ_IN_BITS / AXI_LEN);
    // Outgoing txn count: t_current, sq_out
-   localparam int AXI_OUT_COUNT     = (T_LEN/AXI_LEN + 
+   localparam int AXI_OUT_COUNT     = (T_LEN/AXI_LEN +
                                        SQ_OUT_BITS / AXI_LEN);
    localparam int AXI_BYTES_PER_TXN = AXI_LEN/8;
    localparam int AXI_IN_BITS       = AXI_IN_COUNT * AXI_LEN;
    localparam int AXI_OUT_BITS      = AXI_OUT_COUNT * AXI_LEN;
-   
+
 
    // State machine states.
    typedef enum {
@@ -98,7 +91,7 @@ module msu
    logic                         sq_finished;
 
    logic                         final_iteration;
-   
+
    // AXI data storage
    logic [AXI_IN_BITS-1:0]       axi_in;
    logic [AXI_OUT_BITS-1:0]      axi_out;
@@ -107,8 +100,10 @@ module msu
 
 
    genvar                        gi;
-   
-   // Xilinx recommends clocking reset. 
+
+   redun0_t sq_in_int, sq_out_int;
+
+   // Xilinx recommends clocking reset.
    logic        reset_1d;
    always @(posedge clk) begin
       reset_1d <= reset;
@@ -164,7 +159,7 @@ module msu
              end else begin
                 next_state    = STATE_SEND;
              end
-           
+
            STATE_IDLE:
              next_state       = STATE_INIT;
 
@@ -199,28 +194,29 @@ module msu
    assign sq_start                  = state == STATE_START;
    assign s_axis_xfer_size_in_bytes = (AXI_IN_COUNT*AXI_BYTES_PER_TXN);
    assign s_axis_tready             = (state == STATE_RECV);
-   
+
    //////////////////////////////////////////////////////////////////////
    // Modsqr function
    //////////////////////////////////////////////////////////////////////
 
-`ifdef SIMPLE_SQ
-   modular_square_simple
-`else
-   modular_square_wrapper
-`endif
-     #(
-       .MOD_LEN(SQ_IN_BITS)
-       )
-   modsqr
-     (
-      .clk                (clk),
-      .reset              (reset || reset_1d || state == STATE_RECV),
-      .start              (sq_start),
-      .sq_in              (sq_in),
-      .sq_out             (sq_out),
-      .valid              (sq_finished)
-      );
+
+    redun_wrapper redun_wrapper (
+      .i_clk    ( clk     ),
+      .i_reset  ( reset || reset_1d || state == STATE_RECV ),
+      .i_sq_in  ( sq_in_int ),
+      .i_start  ( sq_start  ),
+      .o_sq_out ( sq_out_int ),
+      .o_valid  ( sq_finished ),
+      .o_locked ()
+    );
+
+    // Convert our data type
+    always_comb begin
+      for (int i = 0; i < NUM_WRDS; i++) begin
+        sq_in_int[i] = sq_in[i*(WRD_BITS+1) +: (WRD_BITS+1)];
+        sq_out[i*(WRD_BITS+1) +: (WRD_BITS+1)] = sq_out_int[i];
+      end
+    end
 
    //////////////////////////////////////////////////////////////////////
    // Send AXI data
@@ -240,7 +236,7 @@ module msu
    end
 
    assign m_axis_xfer_size_in_bytes = AXI_OUT_COUNT*AXI_BYTES_PER_TXN;
-   assign m_axis_tvalid             = (state == STATE_SEND && 
+   assign m_axis_tvalid             = (state == STATE_SEND &&
                                        axi_out_count < AXI_OUT_COUNT);
    assign m_axis_tdata              = axi_out[AXI_LEN-1:0];
    assign m_axis_tlast              = 0;

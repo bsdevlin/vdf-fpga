@@ -18,8 +18,10 @@ package redun_mont_pkg;
 
   /////////////////////////// Parameters ///////////////////////////
   localparam WRD_BITS = 32;
-  localparam DAT_BITS = 1024+WRD_BITS; // Extra word so we don't have final check
+  localparam IN_BITS = 1024;
+  localparam DAT_BITS = IN_BITS+WRD_BITS; // Extra word so we don't have final check
   localparam NUM_WRDS = DAT_BITS/WRD_BITS;
+  localparam TOT_BITS = NUM_WRDS*(WRD_BITS+1);
 
   localparam [DAT_BITS-1:0] P = 'hb0ad4555c1ee34c8cb0577d7105a475171760330d577a0777ddcb955b302ad0803487d78ca267e8e9f5e3f46e35e10ca641a27e622b2d04bb09f3f5e3ad274b1744f34aeaf90fd45129a02a298dbc430f404f9988c862d10b58c91faba2aa2922f079229b0c8f88d86bfe6def7d026294ed9dee2504b5d30466f7b0488e2666b;
 
@@ -37,8 +39,8 @@ package redun_mont_pkg;
   typedef logic [WRD_BITS:0] redun0_t [NUM_WRDS];
   typedef logic [WRD_BITS:0] redun1_t [NUM_WRDS*2];
   typedef logic [WRD_BITS:0] redun2_t [NUM_WRDS+SPECULATIVE_CARRY_WRDS];
-  typedef logic [DAT_BITS-1:0] fe_t;
-  typedef logic [2*DAT_BITS-1:0] fe1_t;
+  typedef logic [TOT_BITS-1:0] fe_t;
+  typedef logic [2*TOT_BITS-1:0] fe1_t;
 
   function speculative_carry(input redun1_t in); // Do we need to look at redundant bits?
     speculative_carry = 0;
