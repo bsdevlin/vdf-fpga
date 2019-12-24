@@ -34,6 +34,8 @@ logic [NUM_WRDS-1:0] fifo_in_empty, fifo_out_empty;
 logic [FIFO_RD_LTCY-1:0] fifo_in_val, fifo_out_val;
 logic clk_int;
 logic [4:0] locked;
+logic [4:0] locked_int;
+logic reset_int;
 
 always_comb begin
   o_valid = fifo_out_val[FIFO_RD_LTCY-1];
@@ -47,6 +49,8 @@ end
 
 always_ff @ (posedge clk_int) begin
   fifo_in_val <= {fifo_in_val, ~fifo_in_empty[0]};
+  locked_int <= {locked, locked_o};
+  reset_int <= ~locked_int[4];
 end
 
 // Clock wizard to generate clock
@@ -63,7 +67,7 @@ generate
   for (gi = 0; gi < NUM_WRDS; gi++) begin: FIFO_GEN
     if (WRD_BITS == 16) begin
       fifo_generator_16 async_fifo_in (
-        .rst    ( i_reset || ~locked[4] ),
+        .rst    ( i_reset || reset_int ),
         .wr_clk ( i_clk       ),
         .rd_clk ( clk_int     ), 
         .din    ( i_sq_in[gi] ),
@@ -76,7 +80,7 @@ generate
         .rd_rst_busy()
       );
       fifo_generator_16 async_fifo_out (
-        .rst    ( i_reset || ~locked[4] ),
+        .rst    ( i_reset || reset_int ),
         .wr_clk ( clk_int      ),
         .rd_clk ( i_clk        ), 
         .din    ( mul_o[gi]    ),
@@ -90,7 +94,7 @@ generate
       );
     end else if (WRD_BITS == 32) begin
       fifo_generator_32 async_fifo_in (
-        .rst    ( i_reset || ~locked[4] ),
+        .rst    ( i_reset || reset_int ),
         .wr_clk ( i_clk       ),
         .rd_clk ( clk_int     ), 
         .din    ( i_sq_in[gi] ),
@@ -103,7 +107,7 @@ generate
         .rd_rst_busy()
       );
       fifo_generator_32 async_fifo_out (
-        .rst    ( i_reset || ~locked[4] ),
+        .rst    ( i_reset || reset_int ),
         .wr_clk ( clk_int      ),
         .rd_clk ( i_clk        ), 
         .din    ( mul_o[gi]    ),
@@ -122,7 +126,7 @@ endgenerate
 
 redun_mont redun_mont (
   .i_clk  ( clk_int                     ),
-  .i_rst  ( ~locked[4]                  ),
+  .i_rst  ( reset_int                   ),
   .i_sq   ( sq_in                       ),
   .i_val  ( fifo_in_val[FIFO_RD_LTCY-1] ),
   .o_mul  ( mul_o                       ),
