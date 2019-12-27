@@ -36,6 +36,7 @@ redun1_t mult_out, mult_out_r;
 logic val, val_o, i_val_w;
 
 logic [1:0] cnt, ctl;
+logic [1 << MULT_CYCLES:0] ctl_oh; // TODO
 enum {IDLE, MUL0, MUL1, MUL2, FULL_MULT} state;
 
 // Assign input to multiplier

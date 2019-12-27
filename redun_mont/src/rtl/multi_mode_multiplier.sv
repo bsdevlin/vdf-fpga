@@ -33,7 +33,7 @@ module multi_mode_multiplier #(
   parameter int DSP_BIT_LEN      = 17,
   parameter int WORD_LEN         = 16,
   parameter int NUM_ELEMENTS_OUT = NUM_ELEMENTS*2,
-  parameter int ADDER_TYPE       = 1
+  parameter int ADDER_TYPE       = 1 // Adder type 1 seems to give best results
 )(
   input                          i_clk,
   input                          i_rst,
