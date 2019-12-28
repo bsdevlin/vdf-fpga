@@ -93,7 +93,6 @@ export RANDOM_MODULUS  = 0
 
 # Configure MSU parameters. These are included through vdf_kernel.sv
 msuconfig.vh:
-  $(MODSQR_DIR)/../../redun_mont/scripts/mont.py
 	echo "\`define SQ_IN_BITS_DEF $(SQ_IN_BITS)" \
               > msuconfig.vh
 	echo "\`define SQ_OUT_BITS_DEF $(SQ_OUT_BITS)" \
@@ -105,6 +104,10 @@ msuconfig.vh:
 ifeq ($(SIMPLE_SQ), 1)
 	echo "\`define SIMPLE_SQ $(SIMPLE_SQ)" \
               >> msuconfig.vh
+endif
+
+ifeq ($(REDUN_MONT), 1))
+  $(MODSQR_DIR)/../../redun_mont/scripts/mont.py --WRD_BITS $(WORD_LEN) --M $(MODULUS)
 endif
 
 mem/reduction_lut_000.dat: 

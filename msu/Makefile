@@ -35,6 +35,7 @@ hw:
 
 
 # This target is used by the test portal to perform hardware emulation
+# Set REDUN_MONT=1 to enable montgomery multiplier
 hw_emu:
 	make clean
 

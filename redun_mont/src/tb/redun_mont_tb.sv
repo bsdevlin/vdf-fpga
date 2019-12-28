@@ -20,11 +20,11 @@ import redun_mont_pkg::*;
 import common_pkg::*;
 
 localparam CLK_PERIOD = 8000;  // Reference clock is 125MHz
-localparam NUM_ITERATIONS = 100000;
+localparam T = 30;
 
-logic clk, rst, locked;
+logic clk, rst;
 redun0_t in, out;
-logic in_val, out_val, overflow;
+logic in_val, out_val;
 // This is the max size we can expect on the output
 
 initial begin
@@ -37,27 +37,27 @@ initial begin
   forever #CLK_PERIOD clk = ~clk;
 end
 
-
-redun_wrapper redun_wrapper (
-  .i_clk    ( clk     ),
-  .i_reset  ( rst     ),
-  .i_sq_in  ( in      ),
-  .i_start  ( in_val  ),
-  .o_sq_out ( out     ),
-  .o_valid  ( out_val ),
-  .o_locked ( locked  )
+redun_mont redun_mont (
+  .i_clk  ( clk     ),
+  .i_rst  ( rst     ),
+  .i_sq   ( in      ),
+  .i_val  ( in_val  ),
+  .o_mul  ( out     ),
+  .o_val  ( out_val ),
+  .o_overflow()
 );
 
 
 initial begin
   fe_t a, a_, res, exp;
-  int i;
+  logic [T-1:0] i;
   in_val = 0;
+  i = 0;
   in = to_redun(0);
   @(posedge clk);
   // Wait for reset pulse and then lock
   while (rst != 1) @(posedge clk);
-  while (locked != 1) @(posedge clk);
+  while (rst != 0) @(posedge clk);
 
   repeat (20) @(posedge clk);
 
@@ -71,15 +71,14 @@ initial begin
 
   a = from_mont(a_);
 
-  in = to_redun(a_);
-
   @(negedge clk);
+  in = to_redun(a_);
   in_val = 1;
   @(negedge clk);
   in_val = 0;
   //in = to_redun(0);
 
-  for (i = 0; i < NUM_ITERATIONS; i++) begin
+  while(&i == 0) begin
     while (out_val == 0) @(posedge clk);
     $display("#%0d Expected, Got:\n0x%0x\n0x%0x", i, fe_mul_mont(a_, a_), from_redun(out));
     assert (from_redun(out) == fe_mul_mont(a_, a_)) else begin
@@ -88,6 +87,7 @@ initial begin
     end
     a_ = fe_mul_mont(a_, a_);
     @(posedge clk);
+    i++;
   end
 
   res = from_mont(from_redun(out));
