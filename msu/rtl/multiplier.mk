@@ -106,7 +106,7 @@ ifeq ($(SIMPLE_SQ), 1)
               >> msuconfig.vh
 endif
 
-ifeq ($(REDUN_MONT), 1))
+ifeq ($(REDUN_MONT), 1)
   $(MODSQR_DIR)/../../redun_mont/scripts/mont.py --WRD_BITS $(WORD_LEN) --M $(MODULUS)
 endif
 

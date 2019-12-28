@@ -33,7 +33,8 @@ module multi_mode_multiplier #(
   parameter int DSP_BIT_LEN      = 17,
   parameter int WORD_LEN         = 16,
   parameter int NUM_ELEMENTS_OUT = NUM_ELEMENTS*2,
-  parameter int ADDER_TYPE       = 1 // Adder type 1 seems to give best results
+  parameter int ADDER_TYPE       = 1, // Adder type 1 seems to give best results
+  parameter bit AUTO_MODE        = 1  // = 0 we take i_ctrl from outside, = 1 we internally generate it - TODO use buf_g for val_in?
 )(
   input                          i_clk,
   input                          i_rst,
