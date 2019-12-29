@@ -43,8 +43,7 @@ redun_mont redun_mont (
   .i_sq   ( in      ),
   .i_val  ( in_val  ),
   .o_mul  ( out     ),
-  .o_val  ( out_val ),
-  .o_overflow()
+  .o_val  ( out_val )
 );
 
 
@@ -80,9 +79,11 @@ initial begin
 
   while(&i == 0) begin
     while (out_val == 0) @(posedge clk);
-    $display("#%0d Expected, Got:\n0x%0x\n0x%0x", i, fe_mul_mont(a_, a_), from_redun(out));
+    $write(".");
+    if (i % 1000 == 0) $write("\n");
     assert (from_redun(out) == fe_mul_mont(a_, a_)) else begin
-      $display("ERROR -  wrong");
+      $display("Expected, Got:\n0x%0x\n0x%0x", i, fe_mul_mont(a_, a_), from_redun(out));
+      $display("ERROR - #0d wrong", i);
       break;
     end
     a_ = fe_mul_mont(a_, a_);

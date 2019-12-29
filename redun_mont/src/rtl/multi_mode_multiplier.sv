@@ -34,7 +34,7 @@ module multi_mode_multiplier #(
   parameter int WORD_LEN         = 16,
   parameter int NUM_ELEMENTS_OUT = NUM_ELEMENTS*2,
   parameter int ADDER_TYPE       = 1, // Adder type 1 seems to give best results
-  parameter bit AUTO_MODE        = 1  // = 0 we take i_ctrl from outside, = 1 we internally generate it - TODO use buf_g for val_in?
+  parameter bit PIPELINE_OUT     = 0  // Adds an extra pipeline stage to the output of the compressor tree
 )(
   input                          i_clk,
   input                          i_rst,
@@ -56,19 +56,19 @@ logic [OUT_BIT_LEN-1:0]   add_r[NUM_ELEMENTS];
 logic [DSP_BIT_LEN*2-1:0] mul_result[NUM_ELEMENTS][NUM_ELEMENTS];
 logic [OUT_BIT_LEN-1:0]   grid[NUM_ELEMENTS*2][NUM_ELEMENTS*2];
 
-logic [1:0] ctl_r;
-logic val_r;
+logic [PIPELINE_OUT:0][1:0] ctl;
+logic [PIPELINE_OUT+1:0] val;
+
+always_comb o_val = val[PIPELINE_OUT+1];
 
    always_ff @ (posedge i_clk) begin
      if (i_rst) begin
-       ctl_r <= 0;
-       val_r <= 0;
-       o_val <= 0;
+       ctl <= 0;
+       val <= 0;
        for (int i = 0; i < NUM_ELEMENTS; i++) add_r[i] <= 0;
      end else begin
-       ctl_r <= i_ctl;
-       val_r <= i_val;
-       o_val <= val_r;
+       ctl <= {ctl, i_ctl};
+       val <= {val, i_val};
        for (int i = 0; i < NUM_ELEMENTS; i++) begin
          if (i_ctl == 0) begin
            add_r[i] <= 0;
@@ -141,10 +141,10 @@ logic val_r;
 
       for (ii=0; ii<NUM_ELEMENTS; ii=ii+1) begin : grid_row
          for (jj=0; jj<NUM_ELEMENTS; jj=jj+1) begin : grid_col
-           if (ctl_r == 0) begin
+           if (ctl[0] == 0) begin
              grid[(ii+jj)][(2*ii)]       = mul_result[ii][jj][WORD_LEN-1 : 0];
              grid[(ii+jj+1)][((2*ii)+1)] = mul_result[ii][jj][2*DSP_BIT_LEN-1 : WORD_LEN];
-           end else if (ctl_r == 1) begin
+           end else if (ctl[0] == 1) begin
              grid[(ii+jj+1)][((2*ii)+1)] = mul_result[ii][jj][WORD_LEN-1 : 0];
              grid[(ii+jj)][(2*ii)]       = mul_result[ii][jj][2*DSP_BIT_LEN-1 : WORD_LEN];
            end else begin
@@ -175,9 +175,16 @@ logic val_r;
    // Sum each column using compressor tree
    generate
       // First and last can always come from grid
-      always_comb begin
-        res[0] = grid[0][0] + add_r[0];
-        res[NUM_ELEMENTS*2-1] = grid[NUM_ELEMENTS*2-1][NUM_ELEMENTS*2-1];
+      if (PIPELINE_OUT == 0) begin
+        always_comb begin
+          res[0] = grid[0][0] + add_r[0];
+          res[NUM_ELEMENTS*2-1] = grid[NUM_ELEMENTS*2-1][NUM_ELEMENTS*2-1];
+        end
+      end else begin
+        always_ff @ (posedge i_clk) begin
+          res[0] <= grid[0][0] + add_r[0];
+          res[NUM_ELEMENTS*2-1] <= grid[NUM_ELEMENTS*2-1][NUM_ELEMENTS*2-1];
+        end
       end
 
       for (i=1; i<NUM_ELEMENTS*2-1; i=i+1) begin : col_sums
@@ -216,11 +223,15 @@ logic val_r;
                .S(S_col)
              );
 
-             always_comb begin
-               res[i] = Cout_col[OUT_BIT_LEN-1:0] + S_col[OUT_BIT_LEN-1:0];
+             if (PIPELINE_OUT == 0) begin
+               always_comb  res[i] = Cout_col[OUT_BIT_LEN-1:0] + S_col[OUT_BIT_LEN-1:0];
+             end else begin
+               always_ff @ (posedge i_clk)  res[i] <= Cout_col[OUT_BIT_LEN-1:0] + S_col[OUT_BIT_LEN-1:0];
              end
 
            end else if (ADDER_TYPE == 1) begin
+
+             logic [OUT_BIT_LEN-1:0] res_int;
 
              adder_tree_2_to_1 #(
                .NUM_ELEMENTS(TOT_ELEMENTS),
@@ -228,8 +239,14 @@ logic val_r;
              )
              adder_tree_2_to_1 (
                .terms(terms),
-               .S(res[i])
+               .S(res_int)
              );
+
+             if (PIPELINE_OUT == 0) begin
+               always_comb  res[i] = res_int;
+             end else begin
+               always_ff @ (posedge i_clk)  res[i] <= res_int;
+             end
 
            end else if (ADDER_TYPE == 2) begin
 
@@ -246,8 +263,10 @@ logic val_r;
                .S(S_col)
              );
 
-             always_comb begin
-               res[i] = Cout_col[OUT_BIT_LEN-1:0] + S_col[OUT_BIT_LEN-1:0];
+             if (PIPELINE_OUT == 0) begin
+               always_comb  res[i] = Cout_col[OUT_BIT_LEN-1:0] + S_col[OUT_BIT_LEN-1:0];
+             end else begin
+               always_ff @ (posedge i_clk)  res[i] <= Cout_col[OUT_BIT_LEN-1:0] + S_col[OUT_BIT_LEN-1:0];
              end
 
            end else
@@ -258,9 +277,9 @@ logic val_r;
    // Propigate carry on the boundary depending on direction
    always_comb
      for (int ii = 0; ii < NUM_ELEMENTS*2; ii++) begin
-       if(ctl_r == 0) begin
+       if(ctl[PIPELINE_OUT] == 0) begin
          res_int[ii] = res[ii][WORD_LEN-1:0] + (ii > 0 ? res[ii-1][OUT_BIT_LEN-1:WORD_LEN] : 0);
-       end else if (ctl_r == 1) begin
+       end else if (ctl[PIPELINE_OUT] == 1) begin
          res_int[ii] = res[ii][WORD_LEN-1:0] + (ii < NUM_ELEMENTS_OUT-1 ? res[ii+1][OUT_BIT_LEN-1:WORD_LEN] : 0);
        end else begin
          res_int[ii] = res[ii][WORD_LEN-1:0] + (ii > 0 ? res[ii-1][OUT_BIT_LEN-1:WORD_LEN] : 0);
@@ -271,12 +290,12 @@ logic val_r;
 
    always_ff @ (posedge i_clk) begin
      for (int i = 0; i < NUM_ELEMENTS*2; i++) begin// Also check for bit overflow here if in mode 1
-       if (ctl_r == 0) begin
+       if (ctl[PIPELINE_OUT] == 0) begin
          o_dat[i] <= res_int[i];
-       end else if (ctl_r == 1) begin
+       end else if (ctl[PIPELINE_OUT] == 1) begin
          if (i == NUM_ELEMENTS-1)
            o_dat[i] <= res_int[i] + res_int[NUM_ELEMENTS][WORD_LEN];
-         else if (i == NUM_ELEMENTS && ctl_r == 1)
+         else if (i == NUM_ELEMENTS && ctl[PIPELINE_OUT] == 1)
            o_dat[i] <= res_int[i][WORD_LEN-1:0];
          else
            o_dat[i] <= res_int[i];

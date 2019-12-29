@@ -22,20 +22,21 @@ module redun_mont
   input        [WRD_BITS:0] i_sq [NUM_WRDS],
   input                     i_val,
   output logic [WRD_BITS:0] o_mul [NUM_WRDS],
-  output logic              o_val,
-  output logic              o_overflow
+  output logic              o_val
 );
 
 localparam COL_BIT_LEN = 2*(WRD_BITS+1) - WRD_BITS;
 localparam OUT_BIT_LEN = COL_BIT_LEN + $clog2(NUM_WRDS);
-localparam MULT_CYCLES = 2'd1;
+localparam PIPELINE_MULT = 1;
+localparam MULT_CYCLES = 1 + PIPELINE_MULT;
 
 redun0_t mul_a, mul_b, hmul_out_h, tmp_h, i_sq_l;
 redun1_t mult_out, mult_out_r;
 
 logic val, val_o;
 
-logic [1:0] ctl, cnt;  // also make ctl one hot
+logic [1:0] ctl;
+logic [$clog2(MULT_CYCLES):0] cnt;  // also make ctl one hot
 enum {IDLE, START, MUL0, MUL1, MUL2, FULL_MULT} state;
 
 // Assign input to multiplier
@@ -78,9 +79,8 @@ end
 // State machine and logic requiring reset
 always_ff @ (posedge i_clk) begin
   if (i_rst) begin
-  //  cnt <= 0;
+    cnt <= 0;
     val <= 0;
-    o_overflow <= 0;
     o_val <= 0;
     o_mul <= to_redun(0);
     state <= IDLE;
@@ -103,7 +103,6 @@ always_ff @ (posedge i_clk) begin
         cnt <= 0;
         state <= MUL0;
         ctl <= 2;
-        o_overflow <= 0;
       end
       MUL0: begin
         ctl <= 0;
@@ -159,7 +158,8 @@ multi_mode_multiplier #(
   .NUM_ELEMENTS (NUM_WRDS),
   .DSP_BIT_LEN (WRD_BITS+1),
   .WORD_LEN (WRD_BITS),
-  .NUM_ELEMENTS_OUT(NUM_WRDS+SPECULATIVE_CARRY_WRDS)
+  .NUM_ELEMENTS_OUT(NUM_WRDS+SPECULATIVE_CARRY_WRDS),
+  .PIPELINE_OUT(PIPELINE_MULT)
 )
 multi_mode_multiplier (
   .i_clk      ( i_clk    ),

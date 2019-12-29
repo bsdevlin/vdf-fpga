@@ -14,7 +14,7 @@
   limitations under the License.
 *******************************************************************************/
 
-// Pipe the modular squaring circuit IOs to relieve timing pressure. 
+// Pipe the modular squaring circuit IOs to relieve timing pressure.
 `ifndef MOD_LEN_DEF
 `define MOD_LEN_DEF 1024
 `endif
@@ -95,7 +95,7 @@ module modular_square_wrapper
       end
    endgenerate
 
-   modular_square_8_cycles 
+   modular_square_8_cycles
      #(
        .NONREDUNDANT_ELEMENTS(NONREDUNDANT_ELEMENTS)
        )

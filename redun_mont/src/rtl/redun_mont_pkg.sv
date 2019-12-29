@@ -17,7 +17,7 @@
 package redun_mont_pkg;
 
   /////////////////////////// Parameters ///////////////////////////
-  localparam WRD_BITS = 64;
+  localparam WRD_BITS = 16;
   localparam IN_BITS = 1024;
   localparam DAT_BITS = IN_BITS+WRD_BITS; // Extra word so we don't have final check
   localparam NUM_WRDS = DAT_BITS/WRD_BITS;

@@ -157,8 +157,7 @@ redun_mont redun_mont (
   .i_sq   ( sq_in                       ),
   .i_val  ( fifo_in_val[FIFO_RD_LTCY-1] ),
   .o_mul  ( mul_o                       ),
-  .o_val  ( valid_o                     ),
-  .o_overflow()
+  .o_val  ( valid_o                     )
 );
 
 endmodule
