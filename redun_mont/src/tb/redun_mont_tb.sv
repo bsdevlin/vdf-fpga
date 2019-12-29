@@ -82,6 +82,7 @@ initial begin
     $write(".");
     if (i % 1000 == 0) $write("\n");
     assert (from_redun(out) == fe_mul_mont(a_, a_)) else begin
+      $display("Input: 0x%0x", a_);
       $display("Expected, Got:\n0x%0x\n0x%0x", i, fe_mul_mont(a_, a_), from_redun(out));
       $display("ERROR - #0d wrong", i);
       break;

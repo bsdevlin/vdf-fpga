@@ -45,6 +45,9 @@ always_comb begin
   for (int i = 0; i < NUM_WRDS; i++)
     hmul_out_h[i] = mult_out[NUM_WRDS-1-i];
 
+  mul_a = i_sq_l;
+  mul_b = i_sq_l;
+  
   case(state)
     IDLE: begin // Squaring
       mul_a = i_sq_l;
