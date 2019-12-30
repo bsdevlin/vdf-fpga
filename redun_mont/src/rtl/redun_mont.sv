@@ -88,7 +88,7 @@ always_ff @ (posedge i_clk) begin
     ctl <= 0;
     tmp_h <= to_redun(0);
     mult_out_r <= to_redun1(0);
-    i_sq_l <= to_redun1(0);
+    i_sq_l <= to_redun(0);
   end else begin
     mult_out_r <= mult_out;
     o_val <= 0;
