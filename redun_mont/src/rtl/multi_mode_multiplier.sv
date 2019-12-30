@@ -16,6 +16,7 @@
 *******************************************************************************/
 
 /*
+
  This does 3 modes of multiplication:
  - i_ctl = 0 for multiply to get lower products
  - i_ctl = 1 for multiply to get higher products
@@ -34,7 +35,8 @@ module multi_mode_multiplier #(
   parameter int WORD_LEN         = 16,
   parameter int NUM_ELEMENTS_OUT = NUM_ELEMENTS*2,
   parameter int ADDER_TYPE       = 1, // Adder type 1 seems to give best results
-  parameter bit PIPELINE_OUT     = 0  // Adds an extra pipeline stage to the output of the compressor tree
+  parameter bit PIPELINE_OUT     = 1, // Adds an extra pipeline stage to the output of the compressor tree
+  parameter bit CTL_FIXED        = 1  // The multiplier has internal value for ctrl loop
 )(
   input                          i_clk,
   input                          i_rst,
@@ -59,30 +61,66 @@ logic [OUT_BIT_LEN-1:0]   grid[NUM_ELEMENTS*2][NUM_ELEMENTS*2];
 logic [PIPELINE_OUT:0][1:0] ctl;
 logic [PIPELINE_OUT+1:0] val;
 
+logic val_i;
+logic i_val_r, val_i_r, i_val_rr, val_i_rr;
+logic [1:0] ctl_int;
+
+generate
+  if (CTL_FIXED == 1) begin: GEN_CTL_FIXED
+    always_ff @ (posedge i_clk) begin
+      i_val_rr <= i_val_r;
+      i_val_r <= i_val;
+    end
+    BUFG bufg_vali (
+      .O(val_i),
+      .I(i_val)
+    );
+    BUFG bufg_vali_r (
+      .O(val_i_r),
+      .I(i_val_r)
+    );
+    BUFG bufg_vali_rr (
+      .O(val_i_rr),
+      .I(i_val_rr)
+    );    
+    always_ff @ (posedge i_clk)
+      if (i_rst) 
+        ctl_int <= 2;
+      else
+        if (val_i)
+          ctl_int <= ctl_int == 2 ? 0 : ctl_int + 1;
+  end else begin
+    always_comb begin
+      val_i = i_val;
+      ctl_int = i_ctl;
+    end    
+  end
+endgenerate
+
 always_comb o_val = val[PIPELINE_OUT+1];
 
-   always_ff @ (posedge i_clk) begin
-     if (i_rst) begin
-       ctl <= 0;
-       val <= 0;
-       for (int i = 0; i < NUM_ELEMENTS; i++) add_r[i] <= 0;
-     end else begin
-       ctl <= {ctl, i_ctl};
-       val <= {val, i_val};
-       for (int i = 0; i < NUM_ELEMENTS; i++) begin
-         if (i_ctl == 0) begin
-           add_r[i] <= 0;
-           add_r[i] <= i_add_term[i];
-         end else if (i_ctl == 1) begin
-           add_r[NUM_ELEMENTS-i-1] <= 0;
-           add_r[NUM_ELEMENTS-i-1] <= i_add_term[i];// make sure we add one in here;
-         end else if (i_ctl == 2) begin
-           add_r[i] <= 0;
-           add_r[i] <= i_add_term[i];
-         end
+ always_ff @ (posedge i_clk) begin
+   if (i_rst) begin
+     ctl <= 0;
+     val <= 0;
+     for (int i = 0; i < NUM_ELEMENTS; i++) add_r[i] <= 0;
+   end else begin
+     //ctl <= {ctl, i_ctl};
+     val <= {val, val_i};
+     for (int i = 0; i < NUM_ELEMENTS; i++) begin
+       if (ctl_int == 0) begin
+         add_r[i] <= 0;
+         add_r[i] <= i_add_term[i];
+       end else if (ctl_int == 1) begin
+         add_r[NUM_ELEMENTS-i-1] <= 0;
+         add_r[NUM_ELEMENTS-i-1] <= i_add_term[i];
+       end else if (ctl_int == 2) begin
+         add_r[i] <= 0;
+         add_r[i] <= i_add_term[i];
        end
      end
    end
+ end
 
    // Instantiate half the multipliers
    // Swap order if we only need top half
@@ -93,12 +131,25 @@ always_comb o_val = val[PIPELINE_OUT+1];
          for (j=0; j<NUM_ELEMENTS; j=j+1) begin : mul_B
            if (i+j < NUM_ELEMENTS_OUT) begin
               logic [DSP_BIT_LEN-1:0] mul_a, mul_b;
+              logic [1:0] ctl_int;
+              
+              if (CTL_FIXED == 1) begin
+                always_ff @ (posedge i_clk)
+                  if (i_rst) 
+                    ctl_int <= 2;
+                  else
+                    if (val_i)
+                      ctl_int <= ctl_int == 2 ? 0 : ctl_int + 1;
+              end else begin
+                always_comb ctl_int = i_ctl;
+              end
+              
               always_comb begin
-                if (i_ctl == 0) begin
+                if (ctl_int == 0) begin
                   // Multiply lower half
                   mul_a = i_dat_a[i];
                   mul_b = i_dat_b[j];
-                end else if (i_ctl == 1) begin
+                end else if (ctl_int == 1) begin
                   // Multiply upper half
                   mul_a = i_dat_a[NUM_ELEMENTS-i-1];
                   mul_b = i_dat_b[NUM_ELEMENTS-j-1];
@@ -131,20 +182,44 @@ always_comb o_val = val[PIPELINE_OUT+1];
       end
    endgenerate
 
-   int ii, jj;
+   logic [1:0] grid_ctl_int [NUM_ELEMENTS][NUM_ELEMENTS];
+   generate
+    if (CTL_FIXED == 1) begin  
+        logic [1:0] grid_ctl [NUM_ELEMENTS][NUM_ELEMENTS];
+        
+        always_ff @ (posedge i_clk)
+          if (i_rst)
+            for (int ii=0; ii<NUM_ELEMENTS; ii=ii+1)
+              for (int jj=0; jj<NUM_ELEMENTS; jj=jj+1)
+                grid_ctl_int[ii][jj] <= 2;
+          else
+            if (val_i_r)
+              for (int ii=0; ii<NUM_ELEMENTS; ii=ii+1)
+                for (int jj=0; jj<NUM_ELEMENTS; jj=jj+1)
+                  grid_ctl_int[ii][jj] <= grid_ctl_int[ii][jj] == 2 ? 0 : grid_ctl_int[ii][jj] + 1;
+      end else begin
+        always_comb
+          for (int ii=0; ii<NUM_ELEMENTS; ii=ii+1)
+            for (int jj=0; jj<NUM_ELEMENTS; jj=jj+1)
+              grid_ctl_int[ii][jj] = ctl[0];
+      end
+   endgenerate
+   
+   
    always_comb begin
-      for (ii=0; ii<NUM_ELEMENTS*2; ii=ii+1) begin
-         for (jj=0; jj<NUM_ELEMENTS*2; jj=jj+1) begin
+      for (int ii=0; ii<NUM_ELEMENTS*2; ii=ii+1) begin
+         for (int jj=0; jj<NUM_ELEMENTS*2; jj=jj+1) begin
             grid[ii][jj] = 0;
          end
       end
 
-      for (ii=0; ii<NUM_ELEMENTS; ii=ii+1) begin : grid_row
-         for (jj=0; jj<NUM_ELEMENTS; jj=jj+1) begin : grid_col
-           if (ctl[0] == 0) begin
+      for (int ii=0; ii<NUM_ELEMENTS; ii=ii+1) begin : grid_row
+         for (int jj=0; jj<NUM_ELEMENTS; jj=jj+1) begin : grid_col
+         
+           if (grid_ctl_int[ii][jj] == 0) begin
              grid[(ii+jj)][(2*ii)]       = mul_result[ii][jj][WORD_LEN-1 : 0];
              grid[(ii+jj+1)][((2*ii)+1)] = mul_result[ii][jj][2*DSP_BIT_LEN-1 : WORD_LEN];
-           end else if (ctl[0] == 1) begin
+           end else if (grid_ctl_int[ii][jj] == 1) begin
              grid[(ii+jj+1)][((2*ii)+1)] = mul_result[ii][jj][WORD_LEN-1 : 0];
              grid[(ii+jj)][(2*ii)]       = mul_result[ii][jj][2*DSP_BIT_LEN-1 : WORD_LEN];
            end else begin
@@ -273,29 +348,49 @@ always_comb o_val = val[PIPELINE_OUT+1];
              fatal(0, "ERROR - unsupported value for ADDER_TYPE");
 
       end
+endgenerate
 
+   logic [1:0] res_ctl_int [NUM_ELEMENTS*2];
+   generate
+    if (CTL_FIXED == 1) begin  
+        logic [1:0] res_ctl [NUM_ELEMENTS*2];
+        
+        always_ff @ (posedge i_clk)
+          if (i_rst)
+            for (int ii=0; ii<NUM_ELEMENTS*2; ii=ii+1)
+              res_ctl_int[ii] <= 2;
+          else
+            if ((PIPELINE_OUT == 0 && val_i_r) ||
+              (PIPELINE_OUT == 1 && val_i_rr) )
+              for (int ii=0; ii<NUM_ELEMENTS*2; ii=ii+1)
+                res_ctl_int[ii] <= res_ctl_int[ii] == 2 ? 0 : res_ctl_int[ii] + 1;
+      end else begin
+        always_comb
+          for (int ii=0; ii<NUM_ELEMENTS*2; ii=ii+1)
+              res_ctl_int[ii] = ctl[PIPELINE_OUT];
+      end
+   endgenerate
+   
    // Propigate carry on the boundary depending on direction
    always_comb
      for (int ii = 0; ii < NUM_ELEMENTS*2; ii++) begin
-       if(ctl[PIPELINE_OUT] == 0) begin
+       if(res_ctl_int[ii] == 0) begin
          res_int[ii] = res[ii][WORD_LEN-1:0] + (ii > 0 ? res[ii-1][OUT_BIT_LEN-1:WORD_LEN] : 0);
-       end else if (ctl[PIPELINE_OUT] == 1) begin
+       end else if (res_ctl_int[ii] == 1) begin
          res_int[ii] = res[ii][WORD_LEN-1:0] + (ii < NUM_ELEMENTS_OUT-1 ? res[ii+1][OUT_BIT_LEN-1:WORD_LEN] : 0);
        end else begin
          res_int[ii] = res[ii][WORD_LEN-1:0] + (ii > 0 ? res[ii-1][OUT_BIT_LEN-1:WORD_LEN] : 0);
        end
      end
 
-   endgenerate
-
    always_ff @ (posedge i_clk) begin
      for (int i = 0; i < NUM_ELEMENTS*2; i++) begin// Also check for bit overflow here if in mode 1
-       if (ctl[PIPELINE_OUT] == 0) begin
+       if (res_ctl_int[i] == 0) begin
          o_dat[i] <= res_int[i];
-       end else if (ctl[PIPELINE_OUT] == 1) begin
+       end else if (res_ctl_int[i] == 1) begin
          if (i == NUM_ELEMENTS-1)
            o_dat[i] <= res_int[i] + res_int[NUM_ELEMENTS][WORD_LEN];
-         else if (i == NUM_ELEMENTS && ctl[PIPELINE_OUT] == 1)
+         else if (i == NUM_ELEMENTS && res_ctl_int[i] == 1)
            o_dat[i] <= res_int[i][WORD_LEN-1:0];
          else
            o_dat[i] <= res_int[i];
@@ -304,4 +399,6 @@ always_comb o_val = val[PIPELINE_OUT+1];
        end
      end
    end
+   
+   
 endmodule

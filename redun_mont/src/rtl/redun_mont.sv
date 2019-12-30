@@ -28,7 +28,9 @@ module redun_mont
 localparam COL_BIT_LEN = 2*(WRD_BITS+1) - WRD_BITS;
 localparam OUT_BIT_LEN = COL_BIT_LEN + $clog2(NUM_WRDS);
 localparam PIPELINE_MULT = 1;
+localparam CTL_FIXED = 1;
 localparam MULT_CYCLES = 1 + PIPELINE_MULT;
+
 
 redun0_t mul_a, mul_b, hmul_out_h, tmp_h, i_sq_l;
 redun1_t mult_out, mult_out_r;
@@ -74,10 +76,6 @@ always_comb begin
 
 end
 
-// Logic without reset
-always_ff @ (posedge i_clk) begin
-  i_sq_l <= i_sq;
-end
 
 // State machine and logic requiring reset
 always_ff @ (posedge i_clk) begin
@@ -90,6 +88,7 @@ always_ff @ (posedge i_clk) begin
     ctl <= 0;
     tmp_h <= to_redun(0);
     mult_out_r <= to_redun1(0);
+    i_sq_l <= to_redun1(0);
   end else begin
     mult_out_r <= mult_out;
     o_val <= 0;
@@ -97,28 +96,29 @@ always_ff @ (posedge i_clk) begin
     val <= 0;
     case(state)
       IDLE: begin
-        cnt <= 0;
        // cnt_oh <= 0;
         ctl <= 2;
         // Waiting for valid and square
       end
       START: begin
-        cnt <= 0;
-        state <= MUL0;
-        ctl <= 2;
+        if(cnt == MULT_CYCLES) begin
+          cnt <= 0;
+          state <= MUL0;
+          ctl <= 2;
+        end
       end
       MUL0: begin
         ctl <= 0;
         tmp_h <= to_redun(0);
-                val <= cnt == 0;
+        val <= cnt == MULT_CYCLES-1;
         if(cnt == MULT_CYCLES) begin
           state <= MUL1;
           cnt <= 0;
          
           // TODO pipeline this with mult_out_r
-        for (int i = 0; i < NUM_WRDS; i++) begin
-          tmp_h[i] <= mult_out[NUM_WRDS+i];// + i == 0 ? 1 : 0;
-        end
+          for (int i = 0; i < NUM_WRDS; i++) begin
+            tmp_h[i] <= mult_out[NUM_WRDS+i] + (i == 0 ? mult_out[NUM_WRDS-1][WRD_BITS] : 0);
+          end
 
         end
       end
@@ -127,7 +127,7 @@ always_ff @ (posedge i_clk) begin
         if (cnt==0) begin
           tmp_h[0] <= tmp_h[0] + 1;
         end
-        val <= cnt == 0;
+        val <= cnt == MULT_CYCLES-1;
         if(cnt == MULT_CYCLES) begin
           state <= MUL2;
           cnt <= 0;
@@ -136,7 +136,7 @@ always_ff @ (posedge i_clk) begin
       MUL2: begin
         ctl <= 2;
         tmp_h <= to_redun(0);
-        val <= cnt == 0;
+        val <= cnt == MULT_CYCLES-1;
         if(cnt == MULT_CYCLES) begin
           state <= MUL0;
           o_mul <= hmul_out_h;
@@ -151,18 +151,21 @@ always_ff @ (posedge i_clk) begin
     endcase
 
     if (i_val) begin
+      i_sq_l <= i_sq;
       state <= START;
+      cnt <= MULT_CYCLES;
       val <= 1;
     end
   end
 end
 
 multi_mode_multiplier #(
-  .NUM_ELEMENTS (NUM_WRDS),
-  .DSP_BIT_LEN (WRD_BITS+1),
-  .WORD_LEN (WRD_BITS),
-  .NUM_ELEMENTS_OUT(NUM_WRDS+SPECULATIVE_CARRY_WRDS),
-  .PIPELINE_OUT(PIPELINE_MULT)
+  .NUM_ELEMENTS    ( NUM_WRDS                        ),
+  .DSP_BIT_LEN     ( WRD_BITS+1                      ),
+  .WORD_LEN        ( WRD_BITS                        ),
+  .NUM_ELEMENTS_OUT( NUM_WRDS+SPECULATIVE_CARRY_WRDS ),
+  .PIPELINE_OUT    ( PIPELINE_MULT                   ),
+  .CTL_FIXED       ( CTL_FIXED                       )
 )
 multi_mode_multiplier (
   .i_clk      ( i_clk    ),

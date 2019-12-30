@@ -67,7 +67,7 @@ initial begin
   //a_='h8a0824bcfdf4ca166cbe8217e2ba866e78769358f148a26fffbdf7e335d5d419810c0c98838729f91fb88b991d221f5d3ebcc029f4ba10a42df34b3477a4bde91535b0290f7db8839f75718aa330f5b5d720fab8a17ac2c3014fe6c3dd5e35224371405328cab7c2c06630f4253d5b5b3cc49a54854536ac0c36c4d35f976c3e;
   //a_= 'h7c46d717430049b5e2471b405ccc6ad2f65a6fa44456a874bec5a3f0ab9a383cd30537498d33ab4a6260d9c63a8367bfaf77158e709b46114789ae0b97218c3815047cdee375c3b753cc9057577ac4a40515d51749dbca79c68c96698775820356bbf1f9e6a0ba365abf82187573f7e955c42dd33c62d441da1bd51bf4ee230e;
   //a_= 'h5af3dc0aea7d81d4f264e7db04ea9328912ba1f9a846752b19e103ce31531454b6682369ae9b92bee8df4974c5b1105730a5d3f038d8a3e4231986903e39d11497f20b40ce831d6a25ee59405d8ec14147784e81a3139655cfea1ff8b221f878d1995f6519142f7f982d78d87ab2c832885d5cb37547076fbfda0f02f5c11ea4;
-
+  //a_ = 'h8a0824bcfdf4ca166cbe8217e2ba866e78769358f148a26fffbdf7e335d5d419810c0c98838729f91fb88b991d221f5d3ebcc029f4ba10a42df34b3477a4bde91535b0290f7db8839f75718aa330f5b5d720fab8a17ac2c3014fe6c3dd5e35224371405328cab7c2c06630f4253d5b5b3cc49a54854536ac0c36c4d35f976c3e;
   a = from_mont(a_);
 
   @(negedge clk);
@@ -75,16 +75,16 @@ initial begin
   in_val = 1;
   @(negedge clk);
   in_val = 0;
-  //in = to_redun(0);
+  in = to_redun(0);
 
   while(&i == 0) begin
     while (out_val == 0) @(posedge clk);
-    $write(".");
-    if (i % 1000 == 0) $write("\n");
+    if (i % 100 == 0) $write(".");
+    if (i % 10000 == 0) $write("\n");
     assert (from_redun(out) == fe_mul_mont(a_, a_)) else begin
-      $display("Input: 0x%0x", a_);
-      $display("Expected, Got:\n0x%0x\n0x%0x", i, fe_mul_mont(a_, a_), from_redun(out));
-      $display("ERROR - #0d wrong", i);
+      $display("\nInput: 0x%0x", a_);
+      $display("Expected, Got:\n0x%0x\n0x%0x", fe_mul_mont(a_, a_), from_redun(out));
+      $display("ERROR - #%0d wrong", i);
       break;
     end
     a_ = fe_mul_mont(a_, a_);

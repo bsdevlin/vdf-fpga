@@ -40,7 +40,7 @@ package redun_mont_pkg;
     'h2345bc86977e99b4fa1385f6363d8917091785bcb5532e401640ba1692b6fe2a7a20cc1cf9a442bdbf3aaf7c7eb6d42ad681bdedeb20fe319afbc165b2a5af71a7e3eb301f25886eb962edb34f089e72f4ae246dcab527f22c6fe03dca5d25700b8de55ee203cc59ac0ef2bba574b85200a89174fadc85618faaca751d1ef017 : WRD_BITS == 64 ?
     'h0c9e2b0881288cec72faec20cc9714075b68b276451ccb29b795aa157daaf2b51d7f38e926284baa557126eb80e0df90b92564d0c3a3d65fada784f34bcb273964bfde67ec9447b70f03e69c7977b3facddf04015650a1bfdeb7e5db55df6d0078d62b57de2f279bb1bc86370b0a385b39601a6055db8fdb9c3b89a3f27b9e68: 0;
 
-  localparam int SPECULATIVE_CARRY_WRDS = 1;
+  localparam int SPECULATIVE_CARRY_WRDS = 2;
 
   // Parameters used by msu interface
   localparam int T_LEN = 64;
@@ -86,11 +86,15 @@ package redun_mont_pkg;
   function fe_t fe_mul_mont(fe_t a, b);
     logic [$bits(fe_t)*2:0] m_, tmp;
     m_ = a * b; // Can use squaring multiplier here - 2k DSP (double non-diagonal elements)
+    //$display("0x%0x", m_);
     tmp = (m_ & MONT_MASK) * MONT_FACTOR; // can use half multiplier here (want lower half) 1k DSP
     tmp = tmp & MONT_MASK;
+    //$display("0x%0x", tmp);
     tmp = tmp * P; // Can use half multiplier here (want upper half) (can share with half multiplier?)
     tmp = tmp + m_;
+    //$display("0x%0x", tmp);
     tmp = tmp >> MONT_REDUCE_BITS;
+    //$display("0x%0x", tmp);
     assert (tmp < P) else $fatal(1,"ERROR: Result too large");
     fe_mul_mont = tmp;
   endfunction
