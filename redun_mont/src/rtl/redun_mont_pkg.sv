@@ -82,20 +82,16 @@ package redun_mont_pkg;
     check_overflow = res[DAT_BITS];
   endfunction
 
-    // Montgomery multiplication
+  // Montgomery multiplication
   function fe_t fe_mul_mont(fe_t a, b);
     logic [$bits(fe_t)*2:0] m_, tmp;
-    m_ = a * b; // Can use squaring multiplier here - 2k DSP (double non-diagonal elements)
-    //$display("0x%0x", m_);
-    tmp = (m_ & MONT_MASK) * MONT_FACTOR; // can use half multiplier here (want lower half) 1k DSP
+    m_ = a * b;
+    tmp = (m_ & MONT_MASK) * MONT_FACTOR;
     tmp = tmp & MONT_MASK;
-    //$display("0x%0x", tmp);
-    tmp = tmp * P; // Can use half multiplier here (want upper half) (can share with half multiplier?)
+    tmp = tmp * P; 
     tmp = tmp + m_;
-    //$display("0x%0x", tmp);
     tmp = tmp >> MONT_REDUCE_BITS;
-    //$display("0x%0x", tmp);
-    assert (tmp < P) else $fatal(1,"ERROR: Result too large");
+    if (tmp >= P) $display("WARN: mismatch in inputs.\nIn : 0x%0x\nIn : 0x%0x\nOut: 0x%0x", a, b, tmp);
     fe_mul_mont = tmp;
   endfunction
 

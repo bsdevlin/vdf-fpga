@@ -36,12 +36,12 @@ module multi_mode_multiplier #(
   parameter int NUM_ELEMENTS_OUT = NUM_ELEMENTS*2,
   parameter int ADDER_TYPE       = 1, // Adder type 1 seems to give best results
   parameter bit PIPELINE_OUT     = 1, // Adds an extra pipeline stage to the output of the compressor tree
-  parameter bit CTL_FIXED        = 1  // The multiplier has internal value for ctrl loop
+  parameter bit CTL_FIXED        = 0  // The multiplier has internal value for ctrl loop
 )(
   input                          i_clk,
   input                          i_rst,
   input                          i_val,
-  input        [1:0]             i_ctl,
+  input        [1:0]             i_ctl[NUM_ELEMENTS],
   input        [DSP_BIT_LEN-1:0] i_dat_a[NUM_ELEMENTS],
   input        [DSP_BIT_LEN-1:0] i_dat_b[NUM_ELEMENTS],
   input        [DSP_BIT_LEN-1:0] i_add_term[NUM_ELEMENTS],
@@ -57,13 +57,15 @@ logic [DSP_BIT_LEN-1:0]   res_int[NUM_ELEMENTS*2];
 logic [OUT_BIT_LEN-1:0]   add_r[NUM_ELEMENTS];
 logic [DSP_BIT_LEN*2-1:0] mul_result[NUM_ELEMENTS][NUM_ELEMENTS];
 logic [OUT_BIT_LEN-1:0]   grid[NUM_ELEMENTS*2][NUM_ELEMENTS*2];
+logic [OUT_BIT_LEN-1:0]   grid_r[NUM_ELEMENTS*2][NUM_ELEMENTS*2];
 
-logic [PIPELINE_OUT:0][1:0] ctl;
+logic [1:0] ctl [NUM_ELEMENTS];
+logic [1:0] ctl_r [NUM_ELEMENTS];
 logic [PIPELINE_OUT+1:0] val;
 
 logic val_i;
 logic i_val_r, val_i_r, i_val_rr, val_i_rr;
-logic [1:0] ctl_int;
+logic [1:0] ctl_int [NUM_ELEMENTS];
 
 generate
   if (CTL_FIXED == 1) begin: GEN_CTL_FIXED
@@ -85,14 +87,17 @@ generate
     );    
     always_ff @ (posedge i_clk)
       if (i_rst) 
-        ctl_int <= 2;
+        for (int i = 0; i < NUM_ELEMENTS; i++)
+          ctl_int[i] <= 2;
       else
         if (val_i)
-          ctl_int <= ctl_int == 2 ? 0 : ctl_int + 1;
+          for (int i = 0; i < NUM_ELEMENTS; i++)
+            ctl_int[i] <= ctl_int[i] == 2 ? 0 : ctl_int[i] + 1;
   end else begin
     always_comb begin
       val_i = i_val;
-      ctl_int = i_ctl;
+      for (int i = 0; i < NUM_ELEMENTS; i++)
+        ctl_int[i] = i_ctl[i];
     end    
   end
 endgenerate
@@ -101,20 +106,24 @@ always_comb o_val = val[PIPELINE_OUT+1];
 
  always_ff @ (posedge i_clk) begin
    if (i_rst) begin
-     ctl <= 0;
      val <= 0;
-     for (int i = 0; i < NUM_ELEMENTS; i++) add_r[i] <= 0;
+     for (int i = 0; i < NUM_ELEMENTS; i++) begin
+       add_r[i] <= 0;
+       ctl[i] <= 0;
+       ctl_r[i] <= 0;
+     end
    end else begin
-     //ctl <= {ctl, i_ctl};
      val <= {val, val_i};
      for (int i = 0; i < NUM_ELEMENTS; i++) begin
-       if (ctl_int == 0) begin
+       ctl[i] <= i_ctl[i];
+       ctl_r[i] <= ctl[i];
+       if (ctl_int[i] == 0) begin
          add_r[i] <= 0;
          add_r[i] <= i_add_term[i];
-       end else if (ctl_int == 1) begin
+       end else if (ctl_int[i] == 1) begin
          add_r[NUM_ELEMENTS-i-1] <= 0;
          add_r[NUM_ELEMENTS-i-1] <= i_add_term[i];
-       end else if (ctl_int == 2) begin
+       end else if (ctl_int[i] == 2) begin
          add_r[i] <= 0;
          add_r[i] <= i_add_term[i];
        end
@@ -141,7 +150,7 @@ always_comb o_val = val[PIPELINE_OUT+1];
                     if (val_i)
                       ctl_int <= ctl_int == 2 ? 0 : ctl_int + 1;
               end else begin
-                always_comb ctl_int = i_ctl;
+                always_comb ctl_int = i_ctl[i];
               end
               
               always_comb begin
@@ -164,7 +173,8 @@ always_comb o_val = val[PIPELINE_OUT+1];
                   end
                 end
               end
-
+// TODO replace with multiply and include muxing
+/*
               multiplier #(
                 .A_BIT_LEN(DSP_BIT_LEN),
                 .B_BIT_LEN(DSP_BIT_LEN)
@@ -174,7 +184,8 @@ always_comb o_val = val[PIPELINE_OUT+1];
                 .B(mul_b),
                 .P(mul_result[i][j])
                );
-
+*/
+              always_comb mul_result[i][j] = mul_a * mul_b;
             end else begin
               always_comb mul_result[i][j] = 0;
             end
@@ -201,7 +212,7 @@ always_comb o_val = val[PIPELINE_OUT+1];
         always_comb
           for (int ii=0; ii<NUM_ELEMENTS; ii=ii+1)
             for (int jj=0; jj<NUM_ELEMENTS; jj=jj+1)
-              grid_ctl_int[ii][jj] = ctl[0];
+              grid_ctl_int[ii][jj] = ctl[i];
       end
    endgenerate
    
@@ -247,18 +258,23 @@ always_comb o_val = val[PIPELINE_OUT+1];
       end
    end
 
+   always_ff @ (posedge i_clk) 
+      for (int ii=0; ii<NUM_ELEMENTS*2; ii=ii+1) 
+         for (int jj=0; jj<NUM_ELEMENTS*2; jj=jj+1) 
+            grid_r[ii][jj] <=  grid[ii][jj];
+      
    // Sum each column using compressor tree
    generate
       // First and last can always come from grid
       if (PIPELINE_OUT == 0) begin
         always_comb begin
-          res[0] = grid[0][0] + add_r[0];
-          res[NUM_ELEMENTS*2-1] = grid[NUM_ELEMENTS*2-1][NUM_ELEMENTS*2-1];
+          res[0] = grid_r[0][0] + add_r[0];
+          res[NUM_ELEMENTS*2-1] = grid_r[NUM_ELEMENTS*2-1][NUM_ELEMENTS*2-1];
         end
       end else begin
         always_ff @ (posedge i_clk) begin
-          res[0] <= grid[0][0] + add_r[0];
-          res[NUM_ELEMENTS*2-1] <= grid[NUM_ELEMENTS*2-1][NUM_ELEMENTS*2-1];
+          res[0] <= grid_r[0][0] + add_r[0];
+          res[NUM_ELEMENTS*2-1] <= grid_r[NUM_ELEMENTS*2-1][NUM_ELEMENTS*2-1];
         end
       end
 
@@ -275,11 +291,11 @@ always_comb o_val = val[PIPELINE_OUT+1];
          logic [OUT_BIT_LEN-1:0] terms [TOT_ELEMENTS];
          if (i < NUM_ELEMENTS)
            always_comb begin
-             terms = {grid[i][GRID_INDEX:(GRID_INDEX + CUR_ELEMENTS - 1)], add_r[i]};
+             terms = {grid_r[i][GRID_INDEX:(GRID_INDEX + CUR_ELEMENTS - 1)], add_r[i]};
            end
          else
            always_comb begin
-             terms = grid[i][GRID_INDEX:(GRID_INDEX + CUR_ELEMENTS - 1)];
+             terms = grid_r[i][GRID_INDEX:(GRID_INDEX + CUR_ELEMENTS - 1)];
            end
 
 // TODO - We could really make to branches or accumulators, and sum the outputs, to save on logic
@@ -367,7 +383,7 @@ endgenerate
       end else begin
         always_comb
           for (int ii=0; ii<NUM_ELEMENTS*2; ii=ii+1)
-              res_ctl_int[ii] = ctl[PIPELINE_OUT];
+              res_ctl_int[ii] = PIPELINE_OUT == 0 ? ctl[i/2] : ctl_r[i/2];
       end
    endgenerate
    

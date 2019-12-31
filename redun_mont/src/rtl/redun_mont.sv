@@ -28,7 +28,7 @@ module redun_mont
 localparam COL_BIT_LEN = 2*(WRD_BITS+1) - WRD_BITS;
 localparam OUT_BIT_LEN = COL_BIT_LEN + $clog2(NUM_WRDS);
 localparam PIPELINE_MULT = 1;
-localparam CTL_FIXED = 1;
+localparam CTL_FIXED = 0;
 localparam MULT_CYCLES = 1 + PIPELINE_MULT;
 
 
@@ -37,9 +37,9 @@ redun1_t mult_out, mult_out_r;
 
 logic val, val_o;
 
-logic [1:0] ctl;
+logic [1:0] ctl [NUM_WRDS];
 logic [$clog2(MULT_CYCLES):0] cnt;  // also make ctl one hot
-enum {IDLE, START, MUL0, MUL1, MUL2, FULL_MULT} state;
+enum {IDLE, START, MUL0, MUL1, MUL2} state;
 
 // Assign input to multiplier
 always_comb begin
@@ -85,7 +85,7 @@ always_ff @ (posedge i_clk) begin
     o_val <= 0;
     o_mul <= to_redun(0);
     state <= IDLE;
-    ctl <= 0;
+    for (int i = 0; i < NUM_WRDS; i++) ctl[i] <= 0;
     tmp_h <= to_redun(0);
     mult_out_r <= to_redun1(0);
     i_sq_l <= to_redun(0);
@@ -97,18 +97,18 @@ always_ff @ (posedge i_clk) begin
     case(state)
       IDLE: begin
        // cnt_oh <= 0;
-        ctl <= 2;
+        for (int i = 0; i < NUM_WRDS; i++) ctl[i] <= 2;
         // Waiting for valid and square
       end
       START: begin
         if(cnt == MULT_CYCLES) begin
           cnt <= 0;
           state <= MUL0;
-          ctl <= 2;
+          for (int i = 0; i < NUM_WRDS; i++) ctl[i] <= 2;
         end
       end
       MUL0: begin
-        ctl <= 0;
+        for (int i = 0; i < NUM_WRDS; i++) ctl[i] <= 0;
         tmp_h <= to_redun(0);
         val <= cnt == MULT_CYCLES-1;
         if(cnt == MULT_CYCLES) begin
@@ -123,7 +123,7 @@ always_ff @ (posedge i_clk) begin
         end
       end
       MUL1: begin
-        ctl <= 1;
+        for (int i = 0; i < NUM_WRDS; i++) ctl[i] <= 1;
         if (cnt==0) begin
           tmp_h[0] <= tmp_h[0] + 1;
         end
@@ -134,19 +134,15 @@ always_ff @ (posedge i_clk) begin
         end
       end
       MUL2: begin
-        ctl <= 2;
+        for (int i = 0; i < NUM_WRDS; i++) ctl[i] <= 2;
         tmp_h <= to_redun(0);
         val <= cnt == MULT_CYCLES-1;
         if(cnt == MULT_CYCLES) begin
           state <= MUL0;
           o_mul <= hmul_out_h;
           o_val <= 1;
-          ctl <= 2;
           cnt <= 0;
         end
-      end
-      FULL_MULT: begin
-       // Need to get upper words
       end
     endcase
 
