@@ -46,6 +46,7 @@ hw_emu:
 	OBJ=obj_hw_emu MOD_LEN=1024 SIMPLE_SQ=0 REDUN_MONT=1 \
 		$(MAKE) -C $(SDACCEL_DIR) hw_emu |& tee hw_emu.log
 
+
 # This target is used by the test portal to perform synthesis
 synthesis:
 	make clean
