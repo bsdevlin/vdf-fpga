@@ -54,6 +54,7 @@ always_ff @ (posedge clk)
 
 initial begin
   fe_t a, a_, res, exp;
+  fe1_t chk;
   logic [T-1:0] i;
   in_val = 0;
   i = 0;
@@ -65,9 +66,12 @@ initial begin
 
   repeat (20) @(posedge clk);
 
-  a = 2; // Our starting value
+  a = random_vector(DAT_BITS/8) % P; // Our starting value
+  
   a_ = to_mont(a);
+  
   a = from_mont(a_);
+  chk = a;
 
   @(negedge clk);
   in = to_redun(a_);
@@ -86,6 +90,14 @@ initial begin
       $display("ERROR - #%0d wrong", i);
       break;
     end
+    chk = (chk*chk) % P;
+    assert (from_mont(from_redun(out)) == chk) else begin
+      $display("\nInput: 0x%0x", a_);
+      $display("Mont output was bad - Expected, Got:\n0x%0x\n0x%0x", chk, from_mont(from_redun(out)));
+      $display("ERROR - #%0d wrong", i);
+      break;
+    end
+    
     a_ = fe_mul_mont(a_, a_);
     @(posedge clk);
     i++;
