@@ -57,7 +57,7 @@ logic [DSP_BIT_LEN-1:0]   res_int[NUM_ELEMENTS*2];
 logic [OUT_BIT_LEN-1:0]   add_r[NUM_ELEMENTS];
 logic [DSP_BIT_LEN*2-1:0] mul_result[NUM_ELEMENTS][NUM_ELEMENTS];
 logic [OUT_BIT_LEN-1:0]   grid[NUM_ELEMENTS*2][NUM_ELEMENTS*2];
-logic [OUT_BIT_LEN-1:0]   grid_r[NUM_ELEMENTS*2][NUM_ELEMENTS*2];
+(* dont_touch = "true" *) logic [OUT_BIT_LEN-1:0]   grid_r[NUM_ELEMENTS*2][NUM_ELEMENTS*2];
 
 logic [1:0] ctl [NUM_ELEMENTS];
 logic [1:0] ctl_r [NUM_ELEMENTS];
