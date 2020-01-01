@@ -1,68 +1,70 @@
+#!/usr/bin/python3
+
 import math, sys, getopt
 
 class Mont(object):
-	
-	def __init__(self, mod, wrd_size):
-		# Modulus
-		if mod < 3 or mod % 2 == 0:
-			raise ValueError("Modulus must be an odd number at least 3")
-		self.modulus = mod
-		
-		# Add wrd_size here so we can avoid final subtraction
-		self.reducerbits = 1024 +wrd_size
-		self.reducer = 1 << self.reducerbits
-		self.mask = self.reducer - 1
-		assert self.reducer > mod and math.gcd(self.reducer, mod) == 1
-		
-		# Other computed numbers
-		self.reciprocal = Mont.reciprocal_mod(self.reducer % mod, mod)
-		self.reciprocal_sq = (self.reducer * self.reducer)% mod
-		self.factor = (self.reducer * self.reciprocal - 1) // mod
-		self.convertedone = self.reducer % mod
 
-	def convert_in(self, x):
-		return self.multiply(x, self.reciprocal_sq)
+  def __init__(self, mod, wrd_size):
+    # Modulus
+    if mod < 3 or mod % 2 == 0:
+      raise ValueError("Modulus must be an odd number at least 3")
+    self.modulus = mod
 
-	def convert_out(self, x):
-		return self.multiply(x, 1)	
-	
-	# Inputs and output are in Montgomery form and in the range [0, modulus)
-	def multiply(self, x, y):
-		mod = self.modulus
-		product = x * y
-		temp = ((product & self.mask) * self.factor) & self.mask
-		reduced = (product + temp * mod) >> self.reducerbits
-		result = reduced
-		assert 0 <= result < mod
-		return result
-	
-	def pow(self, x, y):
-		assert 0 <= x < self.modulus
-		if y < 0:
-			raise ValueError("Negative exponent")
-		z = self.convertedone
-		while y != 0:
-			if y & 1 != 0:
-				z = self.multiply(z, x)
-			x = self.multiply(x, x)
-			y >>= 1
-		return z
-	
-	@staticmethod
-	def reciprocal_mod(x, mod):
-		# Based on a simplification of the extended Euclidean algorithm
-		assert mod > 0 and 0 <= x < mod
-		y = x
-		x = mod
-		a = 0
-		b = 1
-		while y != 0:
-			a, b = b, a - x // y * b
-			x, y = y, x % y
-		if x == 1:
-			return a % mod
-		else:
-			raise ValueError("Reciprocal does not exist")
+    # Add wrd_size here so we can avoid final subtraction
+    self.reducerbits = 1024 +wrd_size
+    self.reducer = 1 << self.reducerbits
+    self.mask = self.reducer - 1
+    assert self.reducer > mod and math.gcd(self.reducer, mod) == 1
+
+    # Other computed numbers
+    self.reciprocal = Mont.reciprocal_mod(self.reducer % mod, mod)
+    self.reciprocal_sq = (self.reducer * self.reducer)% mod
+    self.factor = (self.reducer * self.reciprocal - 1) // mod
+    self.convertedone = self.reducer % mod
+
+  def convert_in(self, x):
+    return self.multiply(x, self.reciprocal_sq)
+
+  def convert_out(self, x):
+    return self.multiply(x, 1)
+
+  # Inputs and output are in Montgomery form and in the range [0, modulus)
+  def multiply(self, x, y):
+    mod = self.modulus
+    product = x * y
+    temp = ((product & self.mask) * self.factor) & self.mask
+    reduced = (product + temp * mod) >> self.reducerbits
+    result = reduced
+    assert 0 <= result < mod
+    return result
+
+  def pow(self, x, y):
+    assert 0 <= x < self.modulus
+    if y < 0:
+      raise ValueError("Negative exponent")
+    z = self.convertedone
+    while y != 0:
+      if y & 1 != 0:
+        z = self.multiply(z, x)
+      x = self.multiply(x, x)
+      y >>= 1
+    return z
+
+  @staticmethod
+  def reciprocal_mod(x, mod):
+    # Based on a simplification of the extended Euclidean algorithm
+    assert mod > 0 and 0 <= x < mod
+    y = x
+    x = mod
+    a = 0
+    b = 1
+    while y != 0:
+      a, b = b, a - x // y * b
+      x, y = y, x % y
+    if x == 1:
+      return a % mod
+    else:
+      raise ValueError("Reciprocal does not exist")
 
 
 try:
