@@ -20,7 +20,7 @@ import redun_mont_pkg::*;
 import common_pkg::*;
 
 localparam CLK_PERIOD = 8000;  // Reference clock is 125MHz
-localparam T = 30;
+localparam T = 20;
 
 logic clk, rst;
 redun0_t in, out;

@@ -19,7 +19,7 @@ package redun_mont_pkg;
   /////////////////////////// Parameters ///////////////////////////
   localparam WRD_BITS = 16;
   localparam IN_BITS = 1024;
-  localparam DAT_BITS = IN_BITS+WRD_BITS; // Extra word so we don't have final check
+  localparam DAT_BITS = IN_BITS+WRD_BITS; // Extra word so we don't have final check against modulus
   localparam NUM_WRDS = DAT_BITS/WRD_BITS;
   localparam TOT_BITS = NUM_WRDS*(WRD_BITS+1);
 
@@ -40,6 +40,7 @@ package redun_mont_pkg;
     'h2345bc86977e99b4fa1385f6363d8917091785bcb5532e401640ba1692b6fe2a7a20cc1cf9a442bdbf3aaf7c7eb6d42ad681bdedeb20fe319afbc165b2a5af71a7e3eb301f25886eb962edb34f089e72f4ae246dcab527f22c6fe03dca5d25700b8de55ee203cc59ac0ef2bba574b85200a89174fadc85618faaca751d1ef017 : WRD_BITS == 64 ?
     'h0c9e2b0881288cec72faec20cc9714075b68b276451ccb29b795aa157daaf2b51d7f38e926284baa557126eb80e0df90b92564d0c3a3d65fada784f34bcb273964bfde67ec9447b70f03e69c7977b3facddf04015650a1bfdeb7e5db55df6d0078d62b57de2f279bb1bc86370b0a385b39601a6055db8fdb9c3b89a3f27b9e68: 0;
 
+  // These are needed to make sure we account for overflow during masking or shifting
   localparam int SPECULATIVE_CARRY_WRDS = 2;
 
   // Parameters used by msu interface
@@ -88,7 +89,7 @@ package redun_mont_pkg;
     m_ = a * b;
     tmp = (m_ & MONT_MASK) * MONT_FACTOR;
     tmp = tmp & MONT_MASK;
-    tmp = tmp * P; 
+    tmp = tmp * P;
     tmp = tmp + m_;
     tmp = tmp >> MONT_REDUCE_BITS;
     if (tmp >= P) $display("WARN: mismatch in inputs.\nIn : 0x%0x\nIn : 0x%0x\nOut: 0x%0x", a, b, tmp);
