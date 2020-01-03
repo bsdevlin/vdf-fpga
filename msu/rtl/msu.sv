@@ -209,20 +209,6 @@ module msu
       .o_locked ( locked      )
     );
 
-   modular_square_wrapper
-     #(
-       .MOD_LEN(SQ_IN_BITS)
-       )
-   modsqr
-     (
-      .clk                (clk),
-      .reset              (reset || reset_1d || state == STATE_RECV),
-      .start              (sq_start),
-      .sq_in              (sq_in),
-      .sq_out             (sq_out),
-      .valid              (sq_finished)
-      );
-
     // Convert our data type
     always_comb begin
       for (int i = 0; i < NUM_WRDS; i++) begin
