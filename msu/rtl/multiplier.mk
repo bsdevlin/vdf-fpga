@@ -107,9 +107,7 @@ ifeq ($(SIMPLE_SQ), 1)
 endif
 
 mont_config.vh:
-ifeq ($(REDUN_MONT), 1)
-	$(MODSQR_DIR)/../redun_mont/scripts/mont.py --WRD_BITS $(WORD_LEN) --M $(MODULUS)
-endif
+	$(MODSQR_DIR)/../redun_mont/scripts/mont.py --WRD_BITS $(WORD_LEN) --M $(MODULUS) >> mont_config.vh
 
 mem/reduction_lut_000.dat: 
 	mkdir -p mem
