@@ -58,6 +58,9 @@ add_files -norecurse [glob $mont_path/src/rtl/*.sv]
 add_files -norecurse [glob $mont_path/ip/clk_wiz/clk_wiz_0.xci]
 add_files -norecurse [glob $mont_path/ip/fifo_generator_16/fifo_generator_16.xci]
 
+upgrade_ip [get_ips fifo_generator_16]
+upgrade_ip [get_ips clk_wiz_0]
+
 generate_target all [get_files [glob $mont_path/ip/fifo_generator_16/fifo_generator_16.xci]]
 generate_target all [get_files [glob $mont_path/ip/clk_wiz/clk_wiz_0.xci]]
 
