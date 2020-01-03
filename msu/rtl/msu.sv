@@ -96,7 +96,7 @@ module msu
    logic [AXI_OUT_BITS-1:0]      axi_out;
    logic [C_XFER_SIZE_WIDTH-1:0] axi_out_count;
    logic                         axi_in_shift;
-   
+
    logic locked;
 
    genvar                        gi;
@@ -198,7 +198,7 @@ module msu
    //////////////////////////////////////////////////////////////////////
 
     redun0_t sq_in_int, sq_out_int;
-    
+ /*
     redun_wrapper redun_wrapper (
       .i_clk    ( clk     ),
       .i_reset  ( reset || reset_1d || state == STATE_PREPARE_SEND || state == STATE_INIT ),
@@ -208,6 +208,21 @@ module msu
       .o_valid  ( sq_finished ),
       .o_locked ( locked      )
     );
+*/
+
+   modular_square_wrapper
+     #(
+       .MOD_LEN(SQ_IN_BITS)
+       )
+   modsqr
+     (
+      .clk                (clk),
+      .reset              (reset || reset_1d || state == STATE_RECV),
+      .start              (sq_start),
+      .sq_in              (sq_in),
+      .sq_out             (sq_out),
+      .valid              (sq_finished)
+      );
 
     // Convert our data type
     always_comb begin
