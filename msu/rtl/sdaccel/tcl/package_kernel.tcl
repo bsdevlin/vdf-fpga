@@ -58,7 +58,7 @@ add_files -norecurse [glob $mont_path/src/rtl/*.sv]
 add_files -norecurse [glob $mont_path/ip/clk_wiz/clk_wiz_0.xci]
 add_files -norecurse [glob $mont_path/ip/fifo_generator_16/fifo_generator_16.xci]
 
-generate_target all [get_files fifo_generator_16.xci]
+generate_target all [glob $mont_path/ip/fifo_generator_16/fifo_generator_16.xci]
 generate_target all [get_files clk_wiz_0.xci]
 
 set_property top ${krnl_name} [current_fileset]
