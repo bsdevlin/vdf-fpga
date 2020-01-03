@@ -198,7 +198,7 @@ module msu
    //////////////////////////////////////////////////////////////////////
 
     redun0_t sq_in_int, sq_out_int;
- /*
+
     redun_wrapper redun_wrapper (
       .i_clk    ( clk     ),
       .i_reset  ( reset || reset_1d || state == STATE_PREPARE_SEND || state == STATE_INIT ),
@@ -208,7 +208,6 @@ module msu
       .o_valid  ( sq_finished ),
       .o_locked ( locked      )
     );
-*/
 
    modular_square_wrapper
      #(
