@@ -19,7 +19,6 @@
 ############################################################################
 
 SIMPLE_SQ             ?= 0
-REDUN_MONT            ?= 0
 ifeq ($(SIMPLE_SQ), 1)
 MOD_LEN               ?= 128
 else
@@ -35,23 +34,15 @@ REDUNDANT_ELEMENTS     = 2
 NONREDUNDANT_ELEMENTS ?= $(shell expr $(MOD_LEN) \/ $(WORD_LEN))
 NUM_ELEMENTS           = $(shell expr $(NONREDUNDANT_ELEMENTS) \+ \
 	                              $(REDUNDANT_ELEMENTS))
-	            
-	                              
-ifeq ($(REDUN_MONT), 1)
-WORD_LEN               = 32
-MOD_LEN                = 1024
-NUM_WRDS               = $(shell expr $(MOD_LEN) \/ $(WORD_LEN))
-BIT_LEN                = $(shell expr $(WORD_LEN) \+ 1)
-TOT_BITS               = $(shell expr $(NUM_WRDS) \* $(BIT_LEN))
-endif
-
+WORD_LEN               = 16
+BIT_LEN                = 17
 
 ifeq ($(SIMPLE_SQ), 1)
 SQ_IN_BITS             = $(MOD_LEN)
 SQ_OUT_BITS            = $(MOD_LEN)
 else
-SQ_IN_BITS             = $(shell expr $(MOD_LEN) \+ $(WORD_LEN))
-SQ_OUT_BITS            = $TOT_BITS
+SQ_IN_BITS             = $(MOD_LEN)
+SQ_OUT_BITS            = $(shell expr $(NUM_ELEMENTS) \* $(WORD_LEN) \* 2)
 endif
 
 # Default modulus for various sizes
@@ -111,4 +102,3 @@ mem/reduction_lut_000.dat:
 	cd mem && $(MODSQR_DIR)/rtl/gen_reduction_lut.py \
                           --nonredundant $(NONREDUNDANT_ELEMENTS) \
                           --modulus $(MODULUS)
-                          
