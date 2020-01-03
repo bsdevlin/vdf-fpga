@@ -28,8 +28,8 @@ logic in_val, out_val;
 logic [T_LEN-1:0] out_cnt;
 
 initial begin
-  rst = 0;
-  repeat(2) #(20*CLK_PERIOD) rst = ~rst;
+  rst = 1;
+  #(20*CLK_PERIOD) rst = ~rst;
 end
 
 initial begin
