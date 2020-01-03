@@ -86,16 +86,25 @@ generate
               // Multiply lower half
               mul_a = i_dat_a[gi];
               mul_b = i_dat_b[gj];
-            end 
+            end
             i_ctl[2]: begin
               // Multiply upper half
               mul_a = i_dat_a[NUM_ELEMENTS-gi-1];
               mul_b = i_dat_b[NUM_ELEMENTS-gj-1];
-            end            
+            end
           endcase
         end
 
-        always_comb mul_result[gi][gj] = mul_a * mul_b;
+        // Use this multiplier cell so we can restrict placement
+        async_mult #(
+          .BITS(DSP_BIT_LEN)
+        )
+        async_mult (
+          .i_dat_a ( mul_a              ),
+          .i_dat_b ( mul_b              ),
+          .o_dat   ( mul_result[gi][gj] )
+        );
+
       end else begin
         always_comb mul_result[gi][gj] = 0;
       end
@@ -104,8 +113,8 @@ generate
 endgenerate
 
 always_comb begin
-  for (int i=0; i < NUM_ELEMENTS*2; i++) 
-    for (int j = 0; j < NUM_ELEMENTS*2; j++) 
+  for (int i=0; i < NUM_ELEMENTS*2; i++)
+    for (int j = 0; j < NUM_ELEMENTS*2; j++)
       grid[i][j] = 0;
 
   for (int i = 0; i < NUM_ELEMENTS; i++) begin : grid_row
@@ -138,7 +147,7 @@ always_comb begin
         end
         i_ctl[2]: begin
           grid[(i+j+1)][((2*i)+1)] = mul_result[i][j][WORD_LEN-1 : 0];
-          grid[(i+j)][(2*i)]       = mul_result[i][j][2*DSP_BIT_LEN-1 : WORD_LEN];         
+          grid[(i+j)][(2*i)]       = mul_result[i][j][2*DSP_BIT_LEN-1 : WORD_LEN];
         end
       endcase
     end
