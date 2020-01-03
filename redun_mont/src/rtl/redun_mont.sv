@@ -111,17 +111,17 @@ always_ff @ (posedge i_clk) begin
     o_val <= 0;
     i_sq_l <= i_sq;
     unique case (1'b1)
-      state[IDLE]: begin end
-      state[START]: begin end
-      state[MUL0]: begin
+      state_bufg[IDLE]: begin end
+      state_bufg[START]: begin end
+      state_bufg[MUL0]: begin
         tmp_h <= to_redun(0);
         for (int i = 0; i < NUM_WRDS; i++)
           tmp_h[i] <= mult_out[NUM_WRDS+i] + (i == 0 ? (mult_out[NUM_WRDS-1][WRD_BITS] + 1) : 0);
       end
-      state[MUL1]: begin
+      state_bufg[MUL1]: begin
         tmp_h <= to_redun(0);
       end
-      state[MUL2]: begin
+      state_bufg[MUL2]: begin
         tmp_h <= to_redun(0);
         o_mul <= hmul_out_h;
         o_val <= 1;
