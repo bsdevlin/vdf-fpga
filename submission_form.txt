@@ -8,7 +8,7 @@ To submit your design:
 - email your final repo + commit to hello@vdfalliance.org
 
 Team name: Benjamin Devlin
-Expected result (avg ns/square): 56.1ns/sq
+Expected result (avg ns/square): 50.1ns/sq
 Design documentation (below):
 
 - Implemented Montgomery multiplication algorithm (chose not to do Barret reduction algorithm as then we need to use subtraction)
