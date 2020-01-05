@@ -25,11 +25,11 @@ module redun_mont
   output logic    o_val
 );
 
-redun0_t mul_a, mul_b, hmul_out_h, hmul_out_h_r, tmp_h, i_sq_l, mult_out_l;
+redun0_t mul_a, mul_b, hmul_out_h, hmul_out_h_r, tmp_h, i_sq_r, i_sq_rr, mult_out_l;
 redun1_t mult_out;
 
 logic [4:0] state, next_state, state_bufg;
-logic mul_sq_bufg, o_val_r;
+logic mul_sq_bufg, o_val_r, i_val_r;
 
 enum {IDLE  = 0, 
       START = 1, 
@@ -60,22 +60,22 @@ always_comb begin
 
   mult_out_l = mult_out[0:NUM_WRDS-1];
   
-  mul_a = i_sq_l;
-  mul_b = i_sq_l;
+  mul_a = i_sq_rr;
+  mul_b = i_sq_rr;
       
   next_state = 0;
   unique case (1'b1)
     state_bufg[IDLE]: begin
-      mul_a = i_sq_l;
-      mul_b = i_sq_l;
-      if (i_val) 
+      mul_a = i_sq_rr;
+      mul_b = i_sq_rr;
+      if (i_val_r) 
         next_state[START] = 1; 
       else
         next_state[IDLE] = 1;
     end
     state_bufg[START]: begin
-      mul_a = i_sq_l;
-      mul_b = i_sq_l;
+      mul_a = i_sq_rr;
+      mul_b = i_sq_rr;
       next_state[MUL0] = 1;
     end
     state_bufg[MUL0]: begin
@@ -101,12 +101,14 @@ end
 always_ff @ (posedge i_clk) begin
   hmul_out_h_r <= hmul_out_h;
   o_mul <= hmul_out_h_r;
-  i_sq_l <= i_sq;
+  i_sq_r <= i_sq;
+  i_sq_rr <= i_sq_r;
   if (state_bufg[MUL0]) 
     for (int i = 0; i < NUM_WRDS; i++)
       tmp_h[i] <= mult_out[NUM_WRDS+i] + (i == 0 ? (mult_out[NUM_WRDS-1][WRD_BITS] + 1) : 0);
   else
     tmp_h <= to_redun(0);
+  i_val_r <= i_val;
   o_val_r <= (state_bufg[MUL2]);
   o_val <= o_val_r;
 end
