@@ -143,7 +143,10 @@ public:
 
     virtual void pack(mpz_t msu_in, uint64_t t_start, uint64_t t_final,
                       mpz_t sq_in) {
-        mpz_set(msu_in, sq_in);
+      // First convert to Montgomery
+
+      gmp_printf("Converting to montgomery form....\n");
+        mpz_set(msu_in, 0);//sq_in);
 
         // t_final
         bn_shl(msu_in, T_LEN);
