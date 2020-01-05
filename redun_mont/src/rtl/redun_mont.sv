@@ -17,19 +17,19 @@
 module redun_mont
   import redun_mont_pkg::*;
 (
-  input                     i_clk,
-  input                     i_rst,
-  input        [WRD_BITS:0] i_sq [NUM_WRDS],
-  input                     i_val,
-  output logic [WRD_BITS:0] o_mul [NUM_WRDS],
-  output logic              o_val
+  input           i_clk,
+  input           i_rst,
+  input redun0_t  i_sq,
+  input           i_val,
+  output redun0_t o_mul,
+  output logic    o_val
 );
 
-redun0_t mul_a, mul_b, hmul_out_h, tmp_h, i_sq_l, mult_out_l;
+redun0_t mul_a, mul_b, hmul_out_h, hmul_out_h_r, tmp_h, i_sq_l, mult_out_l;
 redun1_t mult_out;
 
 logic [4:0] state, next_state, state_bufg;
-logic mul_sq_bufg;
+logic mul_sq_bufg, o_val_r;
 
 enum {IDLE  = 0, 
       START = 1, 
@@ -97,36 +97,27 @@ always_comb begin
   endcase           
 end
 
+// Logic without a reset
+always_ff @ (posedge i_clk) begin
+  hmul_out_h_r <= hmul_out_h;
+  o_mul <= hmul_out_h_r;
+  i_sq_l <= i_sq;
+  if (state_bufg[MUL0]) 
+    for (int i = 0; i < NUM_WRDS; i++)
+      tmp_h[i] <= mult_out[NUM_WRDS+i] + (i == 0 ? (mult_out[NUM_WRDS-1][WRD_BITS] + 1) : 0);
+  else
+    tmp_h <= to_redun(0);
+  o_val_r <= (state_bufg[MUL2]);
+  o_val <= o_val_r;
+end
+
 // Logic requiring reset
 always_ff @ (posedge i_clk) begin
   if (i_rst) begin
-    o_val <= 0;
-    o_mul <= to_redun(0);
-    tmp_h <= to_redun(0);
-    i_sq_l <= to_redun(0);
     state <= 0;
     state[IDLE] <= 1;
   end else begin
     state <= next_state;
-    o_val <= 0;
-    i_sq_l <= i_sq;
-    unique case (1'b1)
-      state_bufg[IDLE]: begin end
-      state_bufg[START]: begin end
-      state_bufg[MUL0]: begin
-        tmp_h <= to_redun(0);
-        for (int i = 0; i < NUM_WRDS; i++)
-          tmp_h[i] <= mult_out[NUM_WRDS+i] + (i == 0 ? (mult_out[NUM_WRDS-1][WRD_BITS] + 1) : 0);
-      end
-      state_bufg[MUL1]: begin
-        tmp_h <= to_redun(0);
-      end
-      state_bufg[MUL2]: begin
-        tmp_h <= to_redun(0);
-        o_mul <= hmul_out_h;
-        o_val <= 1;
-      end
-    endcase
   end
 end
 
