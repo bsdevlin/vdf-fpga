@@ -113,6 +113,7 @@ XCLBIN            := ./xclbin
 
 include ../utils.mk
 
+
 DSA               := $(call device2sandsa, $(DEVICE))
 BUILD_DIR         := ./vdf/_x.$(TARGET).$(DSA)
 
