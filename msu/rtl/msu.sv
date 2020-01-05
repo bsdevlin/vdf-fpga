@@ -211,8 +211,11 @@ module msu
 
     // Convert our data type
     always_comb begin
-      for (int i = 0; i < NUM_WRDS; i++) begin
+      sq_in_int = to_redun(0);
+      for (int i = 0; i < IN_BITS/WRD_BITS; i++) begin
         sq_in_int[i] = sq_in[i*WRD_BITS +: WRD_BITS]; // Input we don't have redundant bit
+      end
+      for (int i = 0; i < NUM_WRDS; i++) begin
         sq_out[i*(WRD_BITS+1) +: (WRD_BITS+1)] = sq_out_int[i];
       end
     end
