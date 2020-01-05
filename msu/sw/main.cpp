@@ -168,9 +168,11 @@ int main(int argc, char** argv, char** env) {
             }
 
             if(mpz_cmp_ui(sq_in, 0) != 0) {
+              printf("\nRUNNING FIXED\n");
                 failures += msu.run_fixed(t_start, run_t_final,
                                           sq_in, hw_emu);
             } else {
+              printf("\nRUNNING RANDOM\n");
                 failures += msu.run_random(t_start, run_t_final,
                                            rrandom, hw_emu);
             }
