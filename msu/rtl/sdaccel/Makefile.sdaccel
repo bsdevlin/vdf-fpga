@@ -31,9 +31,7 @@ HOST_FLAGS_FPGA    = -e -f 10
 ifeq ($(SIMPLE_SQ), 1)
 LDCLFLAGS += -DSIMPLE_SQ=1
 endif
-ifeq ($(REDUN_MONT), 1)
-LDCLFLAGS += -DREDUN_MONT=1
-endif
+
 LDCLFLAGS += -DMOD_LEN_DEF=$(MOD_LEN)
 LDCLFLAGS += -DMODULUS_DEF=$(MOD_LEN)\'d$(MODULUS)
 LDCLFLAGS += -DMSU_SQ_IN_BITS_DEF=$(SQ_IN_BITS)
@@ -102,6 +100,10 @@ CXXFLAGS          += -I$(HOST_SRC_DIR) -DFPGA=1 \
                      -DMOD_LEN=$(MOD_LEN)
 ifeq ($(SIMPLE_SQ), 1)
 CXXFLAGS          += -DSIMPLE_SQ=1
+endif
+
+ifeq ($(REDUN_MONT), 1)
+CXXFLAGS          += -DREDUN_MONT=1
 endif
 
 TARGETS           := hw
