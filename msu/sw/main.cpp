@@ -129,6 +129,7 @@ int main(int argc, char** argv, char** env) {
 #endif
 
 #if defined(SIMPLE_SQ)
+    printf("SIMPLE_SQ\n");
   #if defined(DIRECT_TB)
     Squarer *squarer = new SquarerSimpleDirect(mod_len, modulus);
   #else
@@ -137,9 +138,12 @@ int main(int argc, char** argv, char** env) {
 #else
  #if defined(REDUN_MONT)
     Squarer *squarer = new MontReducer(mod_len, modulus);
+    printf("REDUN_MONT\n");
  #elif defined(DIRECT_TB)
+    printf("SquarerOzturkDirect\n");
     Squarer *squarer = new SquarerOzturkDirect(mod_len, modulus);
  #else
+    printf("SquarerOzturk\n");
     Squarer *squarer = new SquarerOzturk(mod_len, modulus);
  #endif
 #endif
