@@ -32,8 +32,7 @@ module multi_mode_multiplier #(
   parameter int NUM_ELEMENTS     = 33,
   parameter int DSP_BIT_LEN      = 17,
   parameter int WORD_LEN         = 16,
-  parameter int NUM_ELEMENTS_OUT = NUM_ELEMENTS*2,
-  parameter int ADDER_TYPE       = 1 // Adder type 1 seems to give best results
+  parameter int NUM_ELEMENTS_OUT = NUM_ELEMENTS*2
 )(
   input                          i_clk,
   input        [2:0]             i_ctl,
@@ -177,37 +176,14 @@ generate
     else
       always_comb terms = grid[gi][GRID_INDEX:(GRID_INDEX + CUR_ELEMENTS - 1)];
 
-        if (ADDER_TYPE == 0) begin
-           logic [OUT_BIT_LEN-1:0] Cout_col;
-           logic [OUT_BIT_LEN-1:0] S_col;
-
-           compressor_tree_3_to_2 #(
-             .NUM_ELEMENTS(TOT_ELEMENTS),
-             .BIT_LEN(OUT_BIT_LEN)
-           )
-           compressor_tree_3_to_2 (
-             .terms(terms),
-             .C(Cout_col),
-             .S(S_col)
-           );
-           always_comb  res[gi] = Cout_col[OUT_BIT_LEN-1:0] + S_col[OUT_BIT_LEN-1:0];
-         end else if (ADDER_TYPE == 1) begin
-
-           logic [OUT_BIT_LEN-1:0] res_int;
-
-           adder_tree_2_to_1 #(
-             .NUM_ELEMENTS(TOT_ELEMENTS),
-             .BIT_LEN(OUT_BIT_LEN)
-           )
-           adder_tree_2_to_1 (
-             .terms(terms),
-             .S(res_int)
-           );
-
-           always_comb  res[gi] = res_int;
-
-           end else
-             $fatal(0, "ERROR - unsupported value for ADDER_TYPE");
+      adder_tree_2_to_1 #(
+        .NUM_ELEMENTS(TOT_ELEMENTS),
+        .BIT_LEN     (OUT_BIT_LEN)
+      )
+      adder_tree_2_to_1 (
+        .terms ( terms   ),
+        .S     ( res[gi] )
+      );
 
       end
 endgenerate
