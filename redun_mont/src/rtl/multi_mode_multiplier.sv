@@ -176,13 +176,13 @@ generate
     else
       always_comb terms = grid[gi][GRID_INDEX:(GRID_INDEX + CUR_ELEMENTS - 1)];
 
-      adder_tree_2_to_1 #(
+      adder_tree_log4 #(
         .NUM_ELEMENTS(TOT_ELEMENTS),
         .BIT_LEN     (OUT_BIT_LEN)
       )
-      adder_tree_2_to_1 (
-        .terms ( terms   ),
-        .S     ( res[gi] )
+      adder_tree_log4 (
+        .i_terms ( terms   ),
+        .o_s     ( res[gi] )
       );
 
       end
