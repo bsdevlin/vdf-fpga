@@ -8,5 +8,6 @@ resize_pblock [get_pblocks sl_exclusion] -add {CLOCKREGION_X4Y0:CLOCKREGION_X5Y9
 set_property EXCLUDE_PLACEMENT 1 [get_pblocks sl_exclusion]
 
 create_pblock SLR2
-add_cells_to_pblock [get_pblocks SLR2] [get_cells -quiet [list redun_wrapper/redun_mont/multi_mode_multiplier/GEN_MULA*]]
+#add_cells_to_pblock [get_pblocks SLR2] [get_cells -quiet [list redun_wrapper/redun_mont/multi_mode_multiplier/GEN_MULA*]]
+add_cells_to_pblock [get_pblocks SLR2] [get_cells -quiet [list redun_wrapper/redun_mont]]
 resize_pblock [get_pblocks SLR2] -add {CLOCKREGION_X0Y10:CLOCKREGION_X5Y14}
