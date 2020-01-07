@@ -8,7 +8,7 @@ To submit your design:
 - email your final repo + commit to hello@vdfalliance.org
 
 Team name: Benjamin Devlin
-Expected result (avg ns/square): 50.1ns/sq
+Expected result (avg ns/square): 49.92ns/sq
 Design documentation (below):
 
 - Implemented Montgomery multiplication algorithm (chose not to do Barret reduction algorithm as then we need to use subtraction)
@@ -17,13 +17,14 @@ Design documentation (below):
   - One squaring, one multiplication where we mask away the upper half, one multiplication with addition where we shift away the lower half
   - We do not require the final check to see if we are larger than the modulus due to increasing the number of words used by 1 in the multiplier
   - Final addition step is combined into the multiplier adder tree to save a clock cycle
+  - Uses log4 adders rather than log2
   - Only have to check for overflow in one word when doing masking and shifts
 - Redundant binary representation of 17 bits for a 16 bit word
 - Created a multi-mode multiplier that uses 2272 DSPs to fit on one SLR (2280)
   - Uses control to select what mode (square / lower half / upper half), all control signals are routed through BUFGs, control signals one-hot
   - Calculates 2 additional words past the shift/mask boundary so that we can detect and adjust overflow
 - MMCM PLL to allow to adjust clock period after place and route to operate at max frequency
-  - We over constrain and then adjust down so timing passes.
+  - We over constrain and then adjust down in tcl script binary seach so timing passes.
 - Clock crossing done in wrapper using word FIFOs
 - Conversion in and our of Montgomery form is done in the SW wrapper
 - Power ramp up not used

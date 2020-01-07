@@ -124,7 +124,12 @@ class MontReducer : public Squarer {
 protected:
     int words_in;
     int words_out;
-
+    mpz_t reducer;
+    mpz_t mask;
+    mpz_t factor;
+    mpz_t converted_one;
+    mpz_t reciprocal_sq;
+    mpz_t reciprocal;
 public:
     MontReducer(uint64_t _mod_len, mpz_t _modulus)
         : Squarer(_mod_len, _modulus) {
@@ -143,11 +148,10 @@ public:
 
     virtual void pack(mpz_t msu_in, uint64_t t_start, uint64_t t_final,
                       mpz_t sq_in) {
-      // First convert to Montgomery
 
-      gmp_printf("Converting to montgomery form....\n");
-      printf("Converting to montgomery form....\n");
-      mpz_set_ui (msu_in, 0); // mpz_set(msu_in, sq_in);
+        // Convert into Montgomery form
+        to_mont(sq_in);
+        mpz_set(msu_in, sq_in);
 
         // t_final
         bn_shl(msu_in, T_LEN);
@@ -165,6 +169,9 @@ public:
 
         // Reduce the polynomial from redundant form
         reduce_polynomial(sq_out, msu_out, word_len, MSU_WORD_LEN);
+
+        // Convert out of Montgomery form
+        from_mont(sq_out);
     }
 
     void reduce_polynomial(mpz_t result, mpz_t poly,
@@ -191,6 +198,67 @@ public:
         // Reduce mod M
         mpz_mod(result, result, modulus);
         //gmp_printf("MSU result is 0x%Zx\n", result);
+    }
+
+    // Calculate our montgomery values
+    void mont_init() {
+
+      mpz_init(reducer);
+      mpz_set_ui(reducer, 1);
+      bn_shl(reducer, DAT_BITS);
+
+      mpz_init(mask);
+      mpz_sub_ui(mask, reducer, 1);
+
+      mpz_init(reciprocal);
+      mpz_mod(reciprocal, reducer, modulus);
+      mpz_invert(reciprocal, reciprocal, modulus);
+
+      mpz_init(reciprocal_sq);
+      mpz_mul(reciprocal_sq, reciprocal, reciprocal);
+      mpz_mod(reciprocal_sq, reciprocal_sq, modulus);
+
+      mpz_init(factor);
+      mpz_mul(factor, reducer, reciprocal);
+      mpz_sub_ui(factor, factor, 1);
+      mpz_cdiv_q(factor, factor, modulus);
+
+      mpz_init(converted_one);
+      mpz_mod(converted_one, reducer, modulus);
+
+      gmp_printf("Montgomery FACTOR is 0x%Zx\n", factor);
+      gmp_printf("Montgomery MASK is 0x%Zx\n", mask);
+      gmp_printf("Montgomery CONVERTED_ONE is 0x%Zx\n", converted_one);
+      gmp_printf("Montgomery RECIPROCAL_SQ is 0x%Zx\n", reciprocal_sq);
+      gmp_printf("Montgomery RECIPROCAL is 0x%Zx\n", reciprocal);
+    }
+
+    // Montgomery multiplication
+    void mont_mult(mpz_t result, mpz_t op1, mpz_t op2) {
+      mpz_t tmp;
+      mpz_init(tmp);
+      mpz_mul(tmp, op1, op2);
+
+      mpz_and(result, tmp, mask);
+      mpz_mul(result, result, factor);
+      mpz_and(result, result, mask);
+
+      mpz_mul(result, result, modulus);
+      mpz_add(result, result, tmp);
+      bn_shr(result, DAT_BITS);
+    }
+
+    // Convert into Montgomery form
+    void to_mont(mpz_t result) {
+      mont_mult(result, reciprocal_sq);
+    }
+
+    // Convert from Montgomery form
+    void from_mont(mpz_t result) {
+      mpz_t tmp;
+      mpz_init(tmp);
+      mpz_set_ui(tmp, 1);
+      mont_mult(result, tmp);
     }
 };
 

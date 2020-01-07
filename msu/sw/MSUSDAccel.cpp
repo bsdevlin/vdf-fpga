@@ -152,7 +152,6 @@ void MSUSDAccel::compute_job(uint64_t t_start,
                                uint64_t t_final,
                                mpz_t sq_in,
                                mpz_t sq_out) {
-  gmp_printf("COMPUTING JOB\n", sq_out);
     squarer->pack(msu_in, t_start, t_final, sq_in);
     ocl.compute_job(msu_out, msu_in);
 

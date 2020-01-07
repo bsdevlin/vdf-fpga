@@ -17,10 +17,9 @@
 
 module redun_mont_tb ();
 import redun_mont_pkg::*;
-import common_pkg::*;
 
 localparam CLK_PERIOD = 8000;  // Reference clock is 125MHz
-localparam T = 20;
+localparam T = 30;
 
 logic clk, rst;
 redun0_t in, out;
@@ -54,10 +53,12 @@ always_ff @ (posedge clk)
 
 initial begin
   fe_t a, a_, res, exp;
+  int unsigned seed;
   fe1_t chk;
   logic [T-1:0] i;
   in_val = 0;
   i = 0;
+  seed = 2;
   in = to_redun(0);
 
   @(posedge clk);
@@ -66,8 +67,13 @@ initial begin
   while (rst != 0) @(posedge clk);
 
   repeat (20) @(posedge clk);
+  $srandom(seed);
+  a = 0;
+  for (int i = 0; i < DAT_BITS/32; i++)
+    a[i*32 +: 32] = $urandom();
 
-  a = random_vector(DAT_BITS/8) % P; // Our starting value
+  a = a % P; // Our starting value
+  $display("Seed, 0x%0x, Starting value: 0x%0x", seed, a);
 
   a_ = to_mont(a);
 
@@ -118,4 +124,6 @@ initial begin
   repeat(2) @(posedge clk);
   $finish();
 end
+
+
 endmodule
