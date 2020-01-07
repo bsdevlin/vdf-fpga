@@ -250,7 +250,7 @@ public:
 
     // Convert into Montgomery form
     void to_mont(mpz_t result) {
-      mont_mult(result, reciprocal_sq);
+      mont_mult(result, result, reciprocal_sq);
     }
 
     // Convert from Montgomery form
@@ -258,7 +258,7 @@ public:
       mpz_t tmp;
       mpz_init(tmp);
       mpz_set_ui(tmp, 1);
-      mont_mult(result, tmp);
+      mont_mult(result, result, tmp);
     }
 };
 
