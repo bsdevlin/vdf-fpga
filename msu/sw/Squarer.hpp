@@ -216,7 +216,7 @@ public:
       mpz_invert(reciprocal, reciprocal, modulus);
 
       mpz_init(reciprocal_sq);
-      mpz_mul(reciprocal_sq, reciprocal, reciprocal);
+      mpz_mul(reciprocal_sq, reducer, reducer);
       mpz_mod(reciprocal_sq, reciprocal_sq, modulus);
 
       mpz_init(factor);
@@ -230,8 +230,9 @@ public:
       gmp_printf("Montgomery FACTOR is 0x%Zx\n", factor);
       gmp_printf("Montgomery MASK is 0x%Zx\n", mask);
       gmp_printf("Montgomery CONVERTED_ONE is 0x%Zx\n", converted_one);
-      gmp_printf("Montgomery RECIPROCAL_SQ is 0x%Zx\n", reciprocal_sq);
       gmp_printf("Montgomery RECIPROCAL is 0x%Zx\n", reciprocal);
+      gmp_printf("Montgomery RECIPROCAL_SQ is 0x%Zx\n", reciprocal_sq);
+
     }
 
     // Montgomery multiplication
