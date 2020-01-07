@@ -151,8 +151,9 @@ void MSUSDAccel::compute_job(uint64_t t_start,
                                mpz_t sq_in,
                                mpz_t sq_out) {
     squarer->pack(msu_in, t_start, t_final, sq_in);
+    gmp_printf("msu_in after packing is 0x%Zx\n", msu_in);
     ocl.compute_job(msu_out, msu_in);
-
+    gmp_printf("msu_out is before unpacking 0x%Zx\n", msu_out);
     uint64_t t_final_out;
     squarer->unpack(sq_out, &t_final_out, msu_out, WRD_BITS); // WRD_BITS for mont_reduce
 }

@@ -115,8 +115,6 @@ void MSU::compute_job() {
     // PREPROCESSING goes below this line (Montgomery conversion, etc)
     //
 
-    //TODO
-
     // Perform the computation
     device.compute_job(t_start, t_final, sq_in, sq_out);
 
