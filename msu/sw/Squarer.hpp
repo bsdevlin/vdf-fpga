@@ -169,7 +169,7 @@ public:
         bn_shr(msu_out, T_LEN);
 
         // Reduce the polynomial from redundant form
-        reduce_polynomial(sq_out, msu_out, word_len, MSU_WORD_LEN);
+        reduce_polynomial(sq_out, msu_out, word_len, WRD_BITS+1);
 
         // Convert out of Montgomery form
         from_mont(sq_out);
@@ -196,9 +196,6 @@ public:
         }
         mpz_clear(tmp);
 
-        // Reduce mod M
-        mpz_mod(result, result, modulus);
-        //gmp_printf("MSU result is 0x%Zx\n", result);
     }
 
     // Calculate our montgomery values
