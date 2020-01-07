@@ -18,15 +18,12 @@
 /*
 
  This does 3 modes of multiplication, one hot encoded:
- - i_ctl[0] for square
- - i_ctl[1] for multiply to get lower products
- - i_ctl[2] for multiply to get higher products
+ i_ctl[0] for square
+ i_ctl[1] for multiply to get lower products
+ i_ctl[2] for multiply to get higher products
 
- - i_add_term allows for an addition term to be added to the output products
+ i_add_term allows for an addition term to be added to the output products (needed for last stage)
 
- Adder type can be defined:
- - 0 for default 3:2 compressors
- - 1 for 2:1 adder tree from Eric Pearson
  */
 module multi_mode_multiplier #(
   parameter int NUM_ELEMENTS     = 33,
@@ -153,7 +150,7 @@ always_comb begin
   end
 end
 
-// Sum each column using compressor tree
+// Sum each column using log4 adders
 generate
   always_comb begin
     res[0] = grid[0][0] + add[0];

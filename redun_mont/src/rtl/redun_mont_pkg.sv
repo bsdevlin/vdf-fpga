@@ -92,7 +92,7 @@ package redun_mont_pkg;
     tmp = tmp * P;
     tmp = tmp + m_;
     tmp = tmp >> MONT_REDUCE_BITS;
-    if (tmp >= P) $display("WARN: mismatch in inputs.\nIn : 0x%0x\nIn : 0x%0x\nOut: 0x%0x", a, b, tmp);
+    if (tmp >= P) $display("WARN: mismatch in inputs.\nIn : 0x%0x\nIn : 0x%0x\nOut: 0x%0x", a, b, tmp); // This is generally OK as long as converted value still tracks, we check this in testbench
     fe_mul_mont = tmp;
   endfunction
 

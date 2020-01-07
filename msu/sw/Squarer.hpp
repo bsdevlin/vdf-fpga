@@ -147,7 +147,7 @@ public:
 
       gmp_printf("Converting to montgomery form....\n");
       printf("Converting to montgomery form....\n");
-        mpz_set(msu_in, 0);//sq_in);
+      mpz_set_ui (msu_in, 0); // mpz_set(msu_in, sq_in);
 
         // t_final
         bn_shl(msu_in, T_LEN);

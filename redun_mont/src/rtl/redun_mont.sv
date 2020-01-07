@@ -31,10 +31,10 @@ redun1_t mult_out;
 logic [4:0] state, next_state, state_bufg;
 logic mul_sq_bufg, o_val_r, i_val_r;
 
-enum {IDLE  = 0, 
-      START = 1, 
+enum {IDLE  = 0,
+      START = 1,
       MUL0  = 2,
-      MUL1  = 3, 
+      MUL1  = 3,
       MUL2  = 4} state_index_t;
 
 // BUFGs drive our global one-hot control values
@@ -50,7 +50,7 @@ generate
   BUFG ctl_bufg (
     .O(mul_sq_bufg),
     .I(state[MUL2] || state[START])
-  );  
+  );
 endgenerate
 
 // Assign input to multiplier
@@ -59,42 +59,42 @@ always_comb begin
     hmul_out_h[i] = mult_out[NUM_WRDS-1-i];
 
   mult_out_l = mult_out[0:NUM_WRDS-1];
-  
+
   mul_a = i_sq_rr;
   mul_b = i_sq_rr;
-      
+
   next_state = 0;
   unique case (1'b1)
-    state_bufg[IDLE]: begin
+    state[IDLE]: begin
       mul_a = i_sq_rr;
       mul_b = i_sq_rr;
-      if (i_val_r) 
-        next_state[START] = 1; 
+      if (i_val_r)
+        next_state[START] = 1;
       else
         next_state[IDLE] = 1;
     end
-    state_bufg[START]: begin
+    state[START]: begin
       mul_a = i_sq_rr;
       mul_b = i_sq_rr;
       next_state[MUL0] = 1;
     end
-    state_bufg[MUL0]: begin
+    state[MUL0]: begin
       mul_a = mult_out_l;
       mul_b = to_redun(MONT_FACTOR);
       next_state[MUL1] = 1;
     end
-    state_bufg[MUL1]: begin
+    state[MUL1]: begin
       mul_a = mult_out_l;
       mul_a[NUM_WRDS-1][WRD_BITS] = 0;
       mul_b = to_redun(P);
       next_state[MUL2] = 1;
     end
-    state_bufg[MUL2]: begin
+    state[MUL2]: begin
       mul_a = hmul_out_h;
       mul_b = hmul_out_h;
       next_state[MUL0] = 1;
     end
-  endcase           
+  endcase
 end
 
 // Logic without a reset
@@ -103,7 +103,7 @@ always_ff @ (posedge i_clk) begin
   o_mul <= hmul_out_h_r;
   i_sq_r <= i_sq;
   i_sq_rr <= i_sq_r;
-  if (state_bufg[MUL0]) 
+  if (state[MUL0])
     for (int i = 0; i < NUM_WRDS; i++)
       tmp_h[i] <= mult_out[NUM_WRDS+i] + (i == 0 ? (mult_out[NUM_WRDS-1][WRD_BITS] + 1) : 0);
   else
@@ -124,10 +124,10 @@ always_ff @ (posedge i_clk) begin
 end
 
 logic [2:0] mult_ctl;
-always_comb mult_ctl = {state_bufg[MUL1], 
-                        state_bufg[MUL0], 
+always_comb mult_ctl = {state_bufg[MUL1],
+                        state_bufg[MUL0],
                         mul_sq_bufg};
-                 
+
 multi_mode_multiplier #(
   .NUM_ELEMENTS    ( NUM_WRDS                        ),
   .DSP_BIT_LEN     ( WRD_BITS+1                      ),
