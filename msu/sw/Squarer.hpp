@@ -136,6 +136,7 @@ public:
         // Only the square in/out words are included here
         words_in  = (DAT_BITS/8)/MSU_BYTES_PER_WORD;
         words_out = (DAT_BITS/8)/MSU_BYTES_PER_WORD;
+        mont_init();
     }
 
     virtual uint64_t msu_words_in() {
