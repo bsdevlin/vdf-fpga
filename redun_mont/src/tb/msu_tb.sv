@@ -22,8 +22,8 @@ import redun_mont_pkg::*;
 
 localparam int            CLK_PERIOD = 8000;  // Reference clock is 125MHz
 localparam [T_LEN-1:0]    START_CNT = 0;
-localparam [T_LEN-1:0]    END_CNT = 10;
-localparam [DAT_BITS-1:0] INIT_VALUE = 2;
+localparam [T_LEN-1:0]    END_CNT = 1;
+localparam [DAT_BITS-1:0] INIT_VALUE = 'h5088a4237f8687e0c9f061cbd5605fbcebafdd0af208da101a0774e816608e6cd1c38b13d0a71f4e6a47f919dafdc89ae6a484d039efaaaabaf74489e025f30a23b3a18f84e28656733525e1fa0b47b6bbf3f25f842cc9fb130083df163b60db38645384a52d18498c68673d66784d6a94e4149e7e286eeaa148fae615d2f94e;
 
 localparam AXI_LEN = 32;
 
@@ -88,7 +88,7 @@ msu (
 );
 
 initial begin
-  logic [common_pkg::MAX_SIM_BYTS*8-1:0] in_dat, out_dat;
+  logic [common_pkg::MAX_SIM_BYTS*8-1:0] in_dat, out_dat, res, exp;
   integer signed out_len;
   s_axis_if.reset_source();
   m_axis_if.rdy = 0;
@@ -98,7 +98,7 @@ initial begin
   // Wait for reset to toggle
   while (rst != 1) @(posedge clk);
   while (rst != 0) @(posedge clk);
-  
+
   @(posedge clk);
   ap_start = 1;
 
@@ -106,10 +106,24 @@ initial begin
   ap_start = 0;
 
   // Send in initial value
-  s_axis_if.put_stream(in_dat, (DAT_BITS+2*T_LEN+7)/8);
+  s_axis_if.put_stream(in_dat, ((DAT_BITS+2*T_LEN+AXI_LEN-1)/AXI_LEN)*(AXI_LEN/8));
 
   // Wait for result
   m_axis_if.get_stream(out_dat, out_len, 0);
+  out_dat = out_dat >> T_LEN;
+  
+  res = 0;
+  for (int i = 0; i < NUM_WRDS; i++)
+    res += (out_dat[i*(WRD_BITS+1) +: WRD_BITS+1] << (i*WRD_BITS));
+  
+  res = from_mont(res);
+  exp = mod_sq(INIT_VALUE,  (END_CNT-START_CNT));
+
+  if (exp == res) begin
+    $display("INFO: Result matched - 0x%0x", res);
+  end else begin
+    $fatal(1, "ERROR: Expected:\n0x%0x\nResult:\n0x%0x", exp, res);
+  end
 
   #1us $finish();
 end

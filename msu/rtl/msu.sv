@@ -56,11 +56,9 @@ module msu
     );
 
    // Incoming txn count: t_start, t_final, sq_in
-   localparam int AXI_IN_COUNT      = (T_LEN/AXI_LEN*2 +
-                                       SQ_IN_BITS / AXI_LEN);
+   localparam int AXI_IN_COUNT      = ((T_LEN*2 + SQ_IN_BITS + AXI_LEN-1)/ AXI_LEN);
    // Outgoing txn count: t_current, sq_out
-   localparam int AXI_OUT_COUNT     = (T_LEN/AXI_LEN +
-                                       SQ_OUT_BITS / AXI_LEN);
+   localparam int AXI_OUT_COUNT     = ((T_LEN + SQ_OUT_BITS + AXI_LEN-1)/ AXI_LEN);
    localparam int AXI_BYTES_PER_TXN = AXI_LEN/8;
    localparam int AXI_IN_BITS       = AXI_IN_COUNT * AXI_LEN;
    localparam int AXI_OUT_BITS      = AXI_OUT_COUNT * AXI_LEN;
@@ -170,7 +168,7 @@ module msu
    //////////////////////////////////////////////////////////////////////
    // Receive AXI data
    //////////////////////////////////////////////////////////////////////
-   assign axi_in_shift = state == STATE_RECV && s_axis_tvalid;
+   assign axi_in_shift = state == STATE_RECV && s_axis_tvalid && s_axis_tready;
 
    always @(posedge clk) begin
       if(axi_in_shift) begin
