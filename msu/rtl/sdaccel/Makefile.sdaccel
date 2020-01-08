@@ -70,9 +70,9 @@ LDCLFLAGS += --xp "vivado_prop:run.impl_1.{STEPS.PLACE_DESIGN.TCL.PRE}=\
 
 LDCLFLAGS += --kernel_frequency 125
 
-#Add in Timing constraints
-TIMING_CONSTRS      = $(realpath ../timing_constrs.xdc)
-LDCLFLAGS += --xp "vivado_prop:run.impl_1.STEPS.OPT_DESIGN.TCL.PRE=$(TIMING_CONSTRS)"
+#Add in Timing constraints - need to check path name and reename
+#TIMING_CONSTRS      = $(realpath ../timing_constrs.xdc)
+#LDCLFLAGS += --xp "vivado_prop:run.impl_1.STEPS.OPT_DESIGN.TCL.PRE=$(TIMING_CONSTRS)"
 
 #add in Post route tcl
 POST_ROUTE_TCL     = $(realpath ../update_pll.tcl)
