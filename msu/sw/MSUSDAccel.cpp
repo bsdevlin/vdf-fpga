@@ -132,7 +132,7 @@ void OpenCLContext::compute_job(mpz_t msu_out, mpz_t msu_in) {
     // Extract the result
     bn_from_buffer(msu_out, output_buf.data(), msu_words_out);
    // if(!quiet) {
-        gmp_printf("msu_out is 0x%Zx\n", msu_out);
+        gmp_printf("~~ msu_out is 0x%Zx\n", msu_out);
         //print_buffer_concise("msu_out", output_buf.data(), msu_words_out);
     //}
 }
@@ -143,6 +143,9 @@ void MSUSDAccel::init(MSU *_msu, Squarer *_squarer) {
     msu_words_in  = (T_LEN*2 + DAT_BITS + MSU_WORD_LEN-1)/MSU_WORD_LEN;
     msu_words_out = (T_LEN + TOT_BITS + MSU_WORD_LEN-1)/MSU_WORD_LEN;
 
+    printf("msu_words_in is %i\n", msu_words_in);
+    printf("msu_words_out is %i\n", msu_words_out);
+
     ocl.init(msu_words_in, msu_words_out);
 }
 
@@ -151,9 +154,7 @@ void MSUSDAccel::compute_job(uint64_t t_start,
                                mpz_t sq_in,
                                mpz_t sq_out) {
     squarer->pack(msu_in, t_start, t_final, sq_in);
-    gmp_printf("msu_in after packing is 0x%Zx\n", msu_in);
     ocl.compute_job(msu_out, msu_in);
-    gmp_printf("msu_out is before unpacking 0x%Zx\n", msu_out);
     uint64_t t_final_out;
     squarer->unpack(sq_out, &t_final_out, msu_out, WRD_BITS); // WRD_BITS for mont_reduce
 }
