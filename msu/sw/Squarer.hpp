@@ -249,17 +249,19 @@ public:
 
     // Convert into Montgomery form
     void to_mont(mpz_t result) {
+      gmp_printf("Montgomery to_mont input is 0x%Zx\n", result);
       mont_mult(result, result, reciprocal_sq);
-      gmp_printf("Montgomery to_mont is 0x%Zx\n", result);
+      gmp_printf("Montgomery to_mont output 0x%Zx\n", result);
     }
 
     // Convert from Montgomery form
     void from_mont(mpz_t result) {
+      gmp_printf("Montgomery from_mont input 0x%Zx\n", result);
       mpz_t tmp;
       mpz_init(tmp);
       mpz_set_ui(tmp, 1);
       mont_mult(result, result, tmp);
-      gmp_printf("Montgomery from_mont is 0x%Zx\n", result);
+      gmp_printf("Montgomery from_mont output 0x%Zx\n", result);
     }
 };
 
