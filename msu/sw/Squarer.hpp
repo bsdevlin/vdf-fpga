@@ -151,8 +151,8 @@ public:
                       mpz_t sq_in) {
 
         // Convert into Montgomery form
-        to_mont(sq_in);
         mpz_set(msu_in, sq_in);
+        to_mont(msu_in);
 
         // t_final
         bn_shl(msu_in, T_LEN);

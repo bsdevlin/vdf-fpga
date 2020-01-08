@@ -23,7 +23,7 @@ import redun_mont_pkg::*;
 localparam int            CLK_PERIOD = 8000;  // Reference clock is 125MHz
 localparam [T_LEN-1:0]    START_CNT = 0;
 localparam [T_LEN-1:0]    END_CNT = 1;
-localparam [DAT_BITS-1:0] INIT_VALUE = 'h5088a4237f8687e0c9f061cbd5605fbcebafdd0af208da101a0774e816608e6cd1c38b13d0a71f4e6a47f919dafdc89ae6a484d039efaaaabaf74489e025f30a23b3a18f84e28656733525e1fa0b47b6bbf3f25f842cc9fb130083df163b60db38645384a52d18498c68673d66784d6a94e4149e7e286eeaa148fae615d2f94e;
+localparam [DAT_BITS-1:0] INIT_VALUE = 'h851698569993e83a65eb9c589d31d57613b9e0d304af253e72a25fb62d56a81322aa13a270c77f95a51d16e8e209a0277038ce55ddae57fbe0cec83f5be0b04d09c764c8f3c413cfd57c8a5d299c5cc82fd6dfdbd477a87715a0d413f32420fc7b34411325e1217a71096848fde90ec745558c7335696741d41c91186caf806b;
 
 localparam AXI_LEN = 32;
 
@@ -115,6 +115,8 @@ initial begin
   res = 0;
   for (int i = 0; i < NUM_WRDS; i++)
     res += (out_dat[i*(WRD_BITS+1) +: WRD_BITS+1] << (i*WRD_BITS));
+  
+  $display("INFO: Result in Mont form - 0x%0x", res);
   
   res = from_mont(res);
   exp = mod_sq(INIT_VALUE,  (END_CNT-START_CNT));

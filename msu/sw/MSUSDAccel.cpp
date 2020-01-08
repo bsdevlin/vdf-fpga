@@ -131,10 +131,10 @@ void OpenCLContext::compute_job(mpz_t msu_out, mpz_t msu_in) {
 
     // Extract the result
     bn_from_buffer(msu_out, output_buf.data(), msu_words_out);
-    if(!quiet) {
+   // if(!quiet) {
         gmp_printf("msu_out is 0x%Zx\n", msu_out);
         //print_buffer_concise("msu_out", output_buf.data(), msu_words_out);
-    }
+    //}
 }
 
 void MSUSDAccel::init(MSU *_msu, Squarer *_squarer) {
