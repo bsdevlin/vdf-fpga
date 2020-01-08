@@ -166,7 +166,7 @@ generate
     localparam integer CUR_ELEMENTS = (gi < NUM_ELEMENTS) ?
                                      ((gi*2)+1) : (gi < NUM_ELEMENTS_OUT) ?
                                      ((NUM_ELEMENTS*4) - 1 - (gi*2)) :
-                                     ((NUM_ELEMENTS*4) - 1 - (gi*2)); // Past half way we only need lower half due to squares
+                                     ((NUM_ELEMENTS*4) - 1 - (gi*2) - (NUM_ELEMENTS*2 - gi - 1)); // Past half way we only need lower half due to squares
     localparam integer GRID_INDEX   = (gi < NUM_ELEMENTS) ?
                                        0 :
                                       (((gi - NUM_ELEMENTS) * 2) + 1);

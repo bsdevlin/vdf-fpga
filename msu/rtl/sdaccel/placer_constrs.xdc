@@ -1,2 +1,2 @@
-add_cells_to_pblock [get_pblocks pblock_dynamic_SLR2] [get_cells [list *inst/inst_wrapper/inst_kernel/msu/redun_wrapper/redun_mont]]
-add_cells_to_pblock [get_pblocks pblock_dynamic_SLR2] [get_cells [list *inst/inst_wrapper/inst_kernel/msu/redun_wrapper/inst]]
+add_cells_to_pblock [get_pblocks pblock_dynamic_SLR2] [get_cells [list *redun_wrapper/redun_mont]]
+add_cells_to_pblock [get_pblocks pblock_dynamic_SLR2] [get_cells [list *redun_wrapper/inst]]
