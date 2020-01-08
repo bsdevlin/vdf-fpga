@@ -33,9 +33,9 @@
 // Used for Mont reducer
 #define WRD_BITS            16
 #define IN_BITS             1024
-#define DAT_BITS            IN_BITS+WRD_BITS
-#define NUM_WRDS            DAT_BITS/WRD_BITS
-#define TOT_BITS            NUM_WRDS*(WRD_BITS+1)
+#define DAT_BITS            (IN_BITS+WRD_BITS)
+#define NUM_WRDS            (DAT_BITS/WRD_BITS)
+#define TOT_BITS            (NUM_WRDS*(WRD_BITS+1))
 
 
 // Use to define size of word on cpp side (1,2,4,8) depending on bit_len

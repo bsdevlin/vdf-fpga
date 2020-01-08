@@ -140,8 +140,13 @@ void OpenCLContext::compute_job(mpz_t msu_out, mpz_t msu_in) {
 void MSUSDAccel::init(MSU *_msu, Squarer *_squarer) {
     MSUDevice::init(_msu, _squarer);
 
-    msu_words_in  = (T_LEN*2 + DAT_BITS + MSU_WORD_LEN-1)/MSU_WORD_LEN;
-    msu_words_out = (T_LEN + TOT_BITS + MSU_WORD_LEN-1)/MSU_WORD_LEN;
+    msu_words_in  = (T_LEN*2 + DAT_BITS + MSU_WORD_LEN-1) / MSU_WORD_LEN;
+    msu_words_out = (T_LEN + TOT_BITS + MSU_WORD_LEN-1) / MSU_WORD_LEN;
+
+
+    printf("T_LEN is %i\n", T_LEN);
+    printf("TOT_BITS is %i\n", TOT_BITS);
+    printf("MSU_WORD_LEN is %i\n", MSU_WORD_LEN);
 
     printf("msu_words_in is %i\n", msu_words_in);
     printf("msu_words_out is %i\n", msu_words_out);
