@@ -48,8 +48,6 @@ multi_mode_multiplier (
   .i_clk   ( clk ),
   .i_ctl   ( ctl ),
   .i_add_term ( add_term ),
-  .i_val (0),
-  .o_val(),
   .i_dat_a ( ina ),
   .i_dat_b ( inb ),
   .o_dat   ( out )

@@ -112,6 +112,7 @@ generate
   end
 endgenerate
 
+// Depending on mode we multiplex where multiplier results end up in the grid to be accumulated
 always_comb begin
   for (int i=0; i < NUM_ELEMENTS*2; i++)
     for (int j = 0; j < NUM_ELEMENTS*2; j++)
@@ -154,17 +155,18 @@ always_comb begin
   end
 end
 
-// Sum each column using log4 adders
+// Sum each column in the grid using log4 adders
 generate
   always_comb begin
     res[0] = grid[0][0] + add[0];
-    res[NUM_ELEMENTS*2-1] = grid[NUM_ELEMENTS*2-1][NUM_ELEMENTS*2-1];
+    res[NUM_ELEMENTS*2-1] = grid[NUM_ELEMENTS*2-1][NUM_ELEMENTS*2-1]; // We don't add in square mode so don't need to worry about last element
   end
 
   for (gi = 1; gi < NUM_ELEMENTS*2-1; gi++) begin : col_sums
     localparam integer CUR_ELEMENTS = (gi < NUM_ELEMENTS) ?
-                                     ((gi*2)+1) :
-                                     ((NUM_ELEMENTS*4) - 1 - (gi*2));
+                                     ((gi*2)+1) : (gi < NUM_ELEMENTS_OUT) ?
+                                     ((NUM_ELEMENTS*4) - 1 - (gi*2)) :
+                                     ((NUM_ELEMENTS*4) - 1 - (gi*2)); // Past half way we only need lower half due to squares
     localparam integer GRID_INDEX   = (gi < NUM_ELEMENTS) ?
                                        0 :
                                       (((gi - NUM_ELEMENTS) * 2) + 1);
@@ -177,11 +179,12 @@ generate
     else
       always_comb terms = grid[gi][GRID_INDEX:(GRID_INDEX + CUR_ELEMENTS - 1)];
 
-      adder_tree_log4 #(
-        .NUM_ELEMENTS(TOT_ELEMENTS),
-        .BIT_LEN     (OUT_BIT_LEN)
+      adder_tree_log_n #(
+        .NUM_ELEMENTS ( TOT_ELEMENTS ),
+        .BIT_LEN      ( OUT_BIT_LEN  ),
+        .N            ( 4            )
       )
-      adder_tree_log4 (
+      adder_tree_log_n (
         .i_terms ( terms   ),
         .o_s     ( res[gi] )
       );

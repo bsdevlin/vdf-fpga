@@ -2,7 +2,7 @@
   Copyright 2019 Benjamin Devlin
   Copyright 2019 Eric Pearson
 
-  Originally based off Eric Pearson's log2 adder but changed to log4.
+  Originally based off Eric Pearson's log2 adder but changed to log_n.
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -17,9 +17,10 @@
   limitations under the License.
 *******************************************************************************/
 
-module adder_tree_log4 #(
-  parameter int NUM_ELEMENTS      = 9,
-  parameter int BIT_LEN           = 16
+module adder_tree_log_n #(
+  parameter int NUM_ELEMENTS = 4,
+  parameter int BIT_LEN = 16,
+  parameter int N = 4
 )(
   input        [BIT_LEN-1:0] i_terms [NUM_ELEMENTS],
   output logic [BIT_LEN-1:0] o_s
@@ -27,32 +28,34 @@ module adder_tree_log4 #(
 
 
 generate
-  if (NUM_ELEMENTS < 4) begin
+  if (NUM_ELEMENTS < N) begin
     always_comb begin
       o_s[BIT_LEN-1:0] = 0;
       for (int i = 0; i < NUM_ELEMENTS; i++)
         o_s[BIT_LEN-1:0] += i_terms[i];
     end
   end else begin
-    localparam integer NUM_RESULTS = integer'(NUM_ELEMENTS / 4) + (NUM_ELEMENTS % 4);
+    localparam integer NUM_RESULTS = integer'(NUM_ELEMENTS / N) + (NUM_ELEMENTS % N);
 
     logic [BIT_LEN-1:0] next_level_terms[NUM_RESULTS];
 
-     adder_tree_level_4 #(
+     adder_tree_level #(
        .NUM_ELEMENTS ( NUM_ELEMENTS ),
        .BIT_LEN      ( BIT_LEN      ),
-       .NUM_RESULTS  ( NUM_RESULTS  )
-     ) adder_tree_level_4 (
+       .NUM_RESULTS  ( NUM_RESULTS  ),
+       .N            ( N            )
+     ) adder_tree_level (
        .i_terms  ( i_terms          ),
        .o_results( next_level_terms )
      );
 
-    adder_tree_log4 #(
+    adder_tree_log_n #(
       .NUM_ELEMENTS ( NUM_RESULTS ),
-      .BIT_LEN      ( BIT_LEN )
-    ) adder_tree_log4 (
+      .BIT_LEN      ( BIT_LEN     ),
+      .N            ( N           )
+    ) adder_tree_log_n (
       .i_terms( next_level_terms ),
-      .o_s    ( o_s               )
+      .o_s    ( o_s              )
     );
 
   end
@@ -60,24 +63,26 @@ endgenerate
 
 endmodule
 
-module adder_tree_level_4 #(
-  parameter int NUM_ELEMENTS = 3,
-  parameter int BIT_LEN      = 19,
-  parameter int NUM_RESULTS  = integer'(NUM_ELEMENTS/4) + (NUM_ELEMENTS%4)
+module adder_tree_level #(
+  parameter int NUM_ELEMENTS = 4,
+  parameter int BIT_LEN      = 16,
+  parameter int N = 4,
+  parameter int NUM_RESULTS  = integer'(NUM_ELEMENTS / N) + (NUM_ELEMENTS % N)
+
 )(
   input        [BIT_LEN-1:0] i_terms   [NUM_ELEMENTS],
   output logic [BIT_LEN-1:0] o_results [NUM_RESULTS]
 );
 
 always_comb begin
-  for (int i=0; i<(NUM_ELEMENTS / 4); i++) begin
+  for (int i=0; i<(NUM_ELEMENTS / N); i++) begin
     o_results[i] = 0;
-    for (int j = 0; j < 4; j++)
-      o_results[i] += i_terms[i*4+j];
+    for (int j = 0; j < N; j++)
+      o_results[i] += i_terms[i*N+j];
    end
 
-   for (int i = 0; i < (NUM_ELEMENTS % 4); i++)
-     o_results[(NUM_ELEMENTS/4) + i] = i_terms[NUM_ELEMENTS-(NUM_ELEMENTS%4) + i];
+   for (int i = 0; i < (NUM_ELEMENTS % N); i++)
+     o_results[(NUM_ELEMENTS / N) + i] = i_terms[NUM_ELEMENTS - (NUM_ELEMENTS % N) + i];
 end
 
 endmodule
