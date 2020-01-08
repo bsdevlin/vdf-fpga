@@ -16,7 +16,6 @@
 *******************************************************************************/
 
 /*
-
  This does 3 modes of multiplication, one hot encoded:
  i_ctl[0] for square
  i_ctl[1] for multiply to get lower products
@@ -24,7 +23,12 @@
 
  i_add_term allows for an addition term to be added to the output products (needed for last stage)
 
+ We calculate 2 words past the boundary so that any overflow can be captured when only multiplying
+ lower or upper products.
+
+ Use log4 adder trees to try minimize critical path.
  */
+
 module multi_mode_multiplier #(
   parameter int NUM_ELEMENTS     = 33,
   parameter int DSP_BIT_LEN      = 17,
@@ -91,7 +95,7 @@ generate
           endcase
         end
 
-        // Use this multiplier cell so we can restrict placement
+        // Use this multiplier cell so we can restrict placement to SLR2
         async_mult #(
           .BITS(DSP_BIT_LEN)
         )

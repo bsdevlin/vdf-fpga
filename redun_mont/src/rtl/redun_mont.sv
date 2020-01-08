@@ -14,6 +14,24 @@
   limitations under the License.
  */
 
+/*
+ This performs repeated modular squaring using Montgomery multiplication technique.
+
+ We use redundant bit representation to minimize delay from carry chains.
+
+ Single clock cycle multiplier which can either calculate the square, lower, or upper
+ products is used.
+
+ Montgomery parameters are extended to include a redundant word so that we can skip the final
+ overflow check.
+
+ One hot control signals are used and driven by BUFGs.
+
+ Everything fits inside a single SLR.
+
+ redun_mont_pkg contains functions for calculating Montgomery values and commonly used typedefs.
+ */
+
 module redun_mont
   import redun_mont_pkg::*;
 (

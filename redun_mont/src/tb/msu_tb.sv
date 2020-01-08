@@ -90,6 +90,7 @@ msu (
 initial begin
   logic [common_pkg::MAX_SIM_BYTS*8-1:0] in_dat, out_dat, res, exp;
   integer signed out_len;
+
   s_axis_if.reset_source();
   m_axis_if.rdy = 0;
   ap_start = 0;
@@ -111,13 +112,13 @@ initial begin
   // Wait for result
   m_axis_if.get_stream(out_dat, out_len, 0);
   out_dat = out_dat >> T_LEN;
-  
+
   res = 0;
   for (int i = 0; i < NUM_WRDS; i++)
     res += (out_dat[i*(WRD_BITS+1) +: WRD_BITS+1] << (i*WRD_BITS));
-  
+
   $display("INFO: Result in Mont form - 0x%0x", res);
-  
+
   res = from_mont(res);
   exp = mod_sq(INIT_VALUE,  (END_CNT-START_CNT));
 
