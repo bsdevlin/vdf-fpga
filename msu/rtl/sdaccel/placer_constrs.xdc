@@ -1,2 +1,2 @@
-#add_cells_to_pblock [get_pblocks pblock_dynamic_SLR2] [get_cells inst/inst_wrapper/inst_kernel/msu/redun_wrapper/redun_mont]
-#add_cells_to_pblock [get_pblocks pblock_dynamic_SLR2] [get_cells inst/inst_wrapper/inst_kernel/msu/redun_wrapper/inst]
+add_cells_to_pblock [get_pblocks pblock_dynamic_SLR2] [get_cells WRAPPER_INST/CL/vdf_1/inst/inst_wrapper/inst_kernel/msu/redun_wrapper/redun_mont]
+add_cells_to_pblock [get_pblocks pblock_dynamic_SLR2] [get_cells WRAPPER_INST/CL/vdf_1/inst/inst_wrapper/inst_kernel/msu/redun_wrapper/inst/inst/mmcme4_adv_inst]
