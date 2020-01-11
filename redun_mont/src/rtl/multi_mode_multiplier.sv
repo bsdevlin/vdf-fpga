@@ -182,7 +182,7 @@ generate
       adder_tree_log_n #(
         .NUM_ELEMENTS ( TOT_ELEMENTS ),
         .BIT_LEN      ( OUT_BIT_LEN  ),
-        .N            ( 4            )
+        .N            ( 3            )
       )
       adder_tree_log_n (
         .i_terms ( terms   ),
