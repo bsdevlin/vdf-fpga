@@ -29,6 +29,3 @@ Design documentation (below):
 - Conversion in and out of Montgomery form is done in the SW wrapper
 - Power ramp up not used
 - Software model in Verilog is in the package file src/rtl/redun_mont_pkg.sv and Python version in scripts/mont.py
-
-TODO:
-- check BUFg on tmp_h signal
