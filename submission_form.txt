@@ -8,7 +8,7 @@ To submit your design:
 - email your final repo + commit to hello@vdfalliance.org
 
 Team name: Benjamin Devlin
-Expected result (avg ns/square): 47.6ns/sq (3 clocks @ 63MHz)
+Expected result (avg ns/square): 44.1ns/sq (3 clocks @ 68MHz)
 
 Design documentation (below):
 
@@ -21,7 +21,7 @@ Design documentation (below):
   - Uses log3 adders rather than log2 for shorter critical path / less LUT usage
 - Redundant binary representation of 17 bits for a 16 bit word
 - Created a multi-mode multiplier that uses 2272 DSPs to fit on one SLR (2280)
-  - Uses control to select what mode (square / lower half / upper half), all control signals are routed through BUFGs, control signals one-hot
+  - Uses control to select what mode (square / lower half / upper half), control signals one-hot
   - Calculates 2 additional words past the shift/mask boundary so that we can detect and adjust overflow
 - MMCM PLL to allow to adjust clock period after place and route to operate at max frequency
   - We over constrain and then adjust down in tcl script binary seach so timing passes.
