@@ -26,7 +26,7 @@
  We calculate 2 words past the boundary so that any overflow can be captured when only multiplying
  lower or upper products.
 
- Use log4 adder trees to try minimize critical path.
+ Use log3 adder trees to try minimize critical path.
  */
 
 module multi_mode_multiplier #(

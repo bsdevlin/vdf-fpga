@@ -25,7 +25,7 @@
  Montgomery parameters are extended to include a redundant word so that we can skip the final
  overflow check.
 
- One hot control signals are used and driven by BUFGs.
+ One hot control signals.
 
  Everything fits inside a single SLR.
 
@@ -46,30 +46,14 @@ module redun_mont
 redun0_t mul_a, mul_b, hmul_out_h, hmul_out_h_r, tmp_h, i_sq_r, i_sq_rr, mult_out_l;
 redun1_t mult_out;
 
-logic [4:0] state, next_state, state_bufg;
-logic mul_sq_bufg, o_val_r, i_val_r;
+logic [4:0] state, next_state;
+logic o_val_r, i_val_r;
 
 enum {IDLE  = 0,
       START = 1,
       MUL0  = 2,
       MUL1  = 3,
       MUL2  = 4} state_index_t;
-
-// BUFGs drive our global one-hot control values
-genvar gi;
-generate
-  for (gi = 0; gi < 5; gi++) begin : GEN_CTL
-    BUFG ctl_bufg (
-      .O(state_bufg[gi]),
-      .I(state[gi])
-    );
-  end
-  // We need one extra for squaring
-  BUFG ctl_bufg (
-    .O(mul_sq_bufg),
-    .I(state[MUL2] || state[START])
-  );
-endgenerate
 
 // Assign input to multiplier
 always_comb begin
@@ -142,9 +126,9 @@ always_ff @ (posedge i_clk) begin
 end
 
 logic [2:0] mult_ctl;
-always_comb mult_ctl = {state_bufg[MUL1],
-                        state_bufg[MUL0],
-                        mul_sq_bufg};
+always_comb mult_ctl = {state[MUL1],
+                        state[MUL0],
+                        state[MUL2] || state[START]};
 
 multi_mode_multiplier #(
   .NUM_ELEMENTS    ( NUM_WRDS                        ),

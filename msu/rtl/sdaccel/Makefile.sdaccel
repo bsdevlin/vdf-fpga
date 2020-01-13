@@ -157,7 +157,7 @@ BINARY_CONTAINER_AWS = vdf.$(TARGET).$(DSA).awsxclbin
 
 CP = cp -rf
 
-S3_BUCKET          = vdfsn
+S3_BUCKET          = vdfsn-bdevlin
 
 
 ############################################################################
