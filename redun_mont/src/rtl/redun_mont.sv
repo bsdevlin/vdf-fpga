@@ -111,7 +111,7 @@ always_ff @ (posedge i_clk) begin
   else
     tmp_h <= to_redun(0);
   i_val_r <= i_val;
-  o_val_r <= (state_bufg[MUL2]);
+  o_val_r <= state[MUL2];
   o_val <= o_val_r;
 end
 
