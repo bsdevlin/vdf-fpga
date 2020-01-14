@@ -76,7 +76,7 @@ LDCLFLAGS += --xp "vivado_prop:run.impl_1.STEPS.OPT_DESIGN.TCL.PRE=$(TIMING_CONS
 
 #add in Post route tcl
 POST_ROUTE_TCL     = $(realpath ../update_pll.tcl)
-LDCLFLAGS += --xp "vivado_prop:run.impl_1.STEPS.ROUTE_DESIGN.TCL.POST=$(POST_ROUTE_TCL)"
+LDCLFLAGS += --xp "vivado_prop:run.impl_1.STEPS.POST_ROUTE_PHYS_OPT_DESIGN.TCL.POST=$(POST_ROUTE_TCL)"
 
 ############################################################################
 # AWS/SDAccel configuration
