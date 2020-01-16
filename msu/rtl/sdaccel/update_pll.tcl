@@ -2,6 +2,9 @@
 
 set mmcm_cell [get_cells WRAPPER_INST/CL/vdf_1/inst/inst_wrapper/inst_kernel/msu/redun_wrapper/inst/inst/mmcme4_adv_inst]
 
+set period [get_property PERIOD [get_clocks clk_out1_clk_wiz_0]]
+puts "INFO: Before adjustment MCMM - period is $period"
+
 set slack [get_property SLACK [get_timing_paths]]
 set mult_f [get_property CLKFBOUT_MULT_F $mmcm_cell]
 set cnt 0
@@ -15,4 +18,8 @@ while {$cnt < 100 & $slack < 0} {
   set cnt [expr {$cnt + 1}]
 }
 
-puts "INFO: Finished adjusting MCMM"
+set period [get_property PERIOD [get_clocks clk_out1_clk_wiz_0]]
+
+puts "INFO: Finished adjusting MCMM - period is now $period"
+
+report_timing -file "adjust_mmcm_post_timing.rpt"
