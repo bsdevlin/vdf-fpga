@@ -61,7 +61,7 @@ LDCLFLAGS += --xp "vivado_prop:run.impl_1.\
                    {STEPS.POST_ROUTE_PHYS_OPT_DESIGN.ARGS.DIRECTIVE}=\
                    {AggressiveExplore}"
                    
-LDCLFLAGS += --xp "param:compiler.skipTimingCheckAndFrequencyScaling=1"
+#LDCLFLAGS += --xp "param:compiler.skipTimingCheckAndFrequencyScaling=1"
 LDCLFLAGS += --xp "vivado_prop:run.impl_1.\
                    {STEPS.POST_ROUTE_PHYS_OPT_DESIGN.ARGS.IS_ENABLED}=\
                    {1}"
