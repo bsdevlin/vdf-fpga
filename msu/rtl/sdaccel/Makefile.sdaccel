@@ -85,7 +85,8 @@ POST_ROUTE_TCL     = $(realpath ../update_pll.tcl)
 LDCLFLAGS += --xp "vivado_prop:run.impl_1.STEPS.POST_ROUTE_PHYS_OPT_DESIGN.TCL.POST=$(POST_ROUTE_TCL)"
 
 # This allows us to change frequency on MMCM
-LDCLFLAGS += --xp "prop:solution.hls_pre_tcl=hls_hook.tcl"
+PRE_TCL     = $(realpath ../hls_hook.tcl)
+LDCLFLAGS += --xp "prop:solution.hls_pre_tcl=$(PRE_TCL)"
 LDCLFLAGS += --xp "param:compiler.skipTimingCheckAndFrequencyScaling=1"
 
 ############################################################################
