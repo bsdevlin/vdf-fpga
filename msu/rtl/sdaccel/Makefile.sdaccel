@@ -81,13 +81,13 @@ TIMING_CONSTRS      = $(realpath ../timing_constrs.xdc)
 LDCLFLAGS += --xp "vivado_prop:run.impl_1.STEPS.OPT_DESIGN.TCL.PRE=$(TIMING_CONSTRS)"
 
 #add in Post route tcl
-POST_ROUTE_TCL     = $(realpath ../update_pll.tcl)
-LDCLFLAGS += --xp "vivado_prop:run.impl_1.STEPS.POST_ROUTE_PHYS_OPT_DESIGN.TCL.POST=$(POST_ROUTE_TCL)"
+#POST_ROUTE_TCL     = $(realpath ../update_pll.tcl)
+#LDCLFLAGS += --xp "vivado_prop:run.impl_1.STEPS.POST_ROUTE_PHYS_OPT_DESIGN.TCL.POST=$(POST_ROUTE_TCL)"
 
 # This allows us to change frequency on MMCM
-PRE_TCL     = $(realpath ../hls_hook.tcl)
-LDCLFLAGS += --xp "prop:solution.hls_pre_tcl=$(PRE_TCL)"
-LDCLFLAGS += --xp "param:compiler.skipTimingCheckAndFrequencyScaling=1"
+#PRE_TCL     = $(realpath ../hls_hook.tcl)
+#LDCLFLAGS += --xp "prop:solution.hls_pre_tcl=$(PRE_TCL)"
+#LDCLFLAGS += --xp "param:compiler.skipTimingCheckAndFrequencyScaling=1"
 
 ############################################################################
 # AWS/SDAccel configuration
