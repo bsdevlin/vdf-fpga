@@ -43,27 +43,17 @@ module redun_mont
   output logic    o_val
 );
 
-redun0_t mul_a, mul_b, hmul_out_h, hmul_out_h_r, tmp_h, i_sq_r, i_sq_rr, mult_out_l, mult_out_l_r;
-redun1_t mult_out, mult_out_r;
+redun0_t mul_a, mul_b, hmul_out_h, hmul_out_h_r, tmp_h, i_sq_r, i_sq_rr, mult_out_l;
+redun1_t mult_out;
 
-logic [63:0] ovrflw_cnt;
+logic [4:0] state, next_state;
 logic o_val_r, i_val_r;
 
-typedef enum logic [5:0] {IDLE  = 1 << 0,
-                          START = 1 << 1,
-                          MUL0  = 2 << 1,
-                          MUL1  = 3 << 1,
-                          MUL2  = 4 << 1,
-                          MUL2_OVRFLW = 5 << 1} state_index_t;
-                          
-state_index_t state, state_r, next_state;
-      
-typedef enum logic [2:0] {SQR  = 1 << 0,
-                          MUL_L = 1 << 1,
-                          MUL_H  = 1 << 2} mult_ctl_t;     
-      
-mult_ctl_t mult_ctl, next_mult_ctl; 
-
+enum {IDLE  = 0,
+      START = 1,
+      MUL0  = 2,
+      MUL1  = 3,
+      MUL2  = 4} state_index_t;
 
 // Assign input to multiplier
 always_comb begin
@@ -75,117 +65,70 @@ always_comb begin
   mul_a = i_sq_rr;
   mul_b = i_sq_rr;
 
-  unique case (state)
-    IDLE: begin
+  next_state = 0;
+  unique case (1'b1)
+    state[IDLE]: begin
       mul_a = i_sq_rr;
       mul_b = i_sq_rr;
-      next_mult_ctl = SQR;
       if (i_val_r)
-        next_state = START;
+        next_state[START] = 1;
       else
-        next_state = IDLE;
+        next_state[IDLE] = 1;
     end
-    START: begin
+    state[START]: begin
       mul_a = i_sq_rr;
       mul_b = i_sq_rr;
-      next_state = MUL0;
-      next_mult_ctl = MUL_L;
+      next_state[MUL0] = 1;
     end
-    MUL0: begin
+    state[MUL0]: begin
       mul_a = mult_out_l;
       mul_b = to_redun(MONT_FACTOR);
-      next_mult_ctl = MUL_H;
-      if (&mult_out[NUM_WRDS][WRD_BITS-1:0])
-        next_state = MUL2_OVRFLW;
-      else
-        next_state = MUL1;
+      next_state[MUL1] = 1;
     end
-    MUL1: begin
+    state[MUL1]: begin
       mul_a = mult_out_l;
-      mul_a[NUM_WRDS-1][WRD_BITS] = 0; // what if we had 0xffff - TODO
-      mul_b = to_redun(P);
-      next_state = MUL2;
-      next_mult_ctl = SQR;
-    end
-    MUL2: begin
-      mul_a = hmul_out_h;
-      mul_b = hmul_out_h;
-      
-      next_state = MUL0;
-      next_mult_ctl = MUL_L;
-      
-      // Need to do low multiplication if we detect possible overflow
-      if (&mult_out[NUM_WRDS][WRD_BITS-1:0]) begin
-        next_state = MUL2_OVRFLW;
-        next_mult_ctl = MUL_L;
-      end
-    end
-    // Here we calculate the lower words to check for overflow
-    MUL2_OVRFLW: begin
-      mul_a = mult_out_l_r;
       mul_a[NUM_WRDS-1][WRD_BITS] = 0;
       mul_b = to_redun(P);
-      next_mult_ctl = MUL_L;
-      next_state = MUL2_OVRFLW;
-      if (state_r == MUL2_OVRFLW && ~(&mult_out[NUM_WRDS-2][WRD_BITS-1:0])) begin
-        next_state = START;
-        next_mult_ctl = SQR;
-      end
+      next_state[MUL2] = 1;
+    end
+    state[MUL2]: begin
+      mul_a = hmul_out_h;
+      mul_b = hmul_out_h;
+      next_state[MUL0] = 1;
     end
   endcase
 end
 
 // Logic without a reset
 always_ff @ (posedge i_clk) begin
-  state_r <= state;
+  hmul_out_h_r <= hmul_out_h;
+  o_mul <= hmul_out_h_r;
   i_sq_r <= i_sq;
-  if (state == MUL0)
+  i_sq_rr <= i_sq_r;
+  if (state[MUL0])
     for (int i = 0; i < NUM_WRDS; i++)
       tmp_h[i] <= mult_out[NUM_WRDS+i] + (i == 0 ? (mult_out[NUM_WRDS-1][WRD_BITS] + 1) : 0);
   else
     tmp_h <= to_redun(0);
-  
-  mult_ctl <= next_mult_ctl;
-  mult_out_r <= mult_out;
-  if (state == MUL1)
-    mult_out_l_r <= mult_out_l;
-    
   i_val_r <= i_val;
-  o_val_r <= state == MUL2 && state_r != MUL2_OVRFLW;
+  o_val_r <= state[MUL2];
   o_val <= o_val_r;
-      
-  // Here we do the overflow check for mul2
-  if (state == MUL2_OVRFLW) begin
-    o_val_r <= next_state != MUL2_OVRFLW;
-    
-    o_val <= 0;
-    if (state_r == MUL2_OVRFLW)
-      for (int i = 0; i < NUM_WRDS; i++) begin
-        i_sq_rr[i] <= i_sq_rr[i][WRD_BITS-1:0] + (i == 0 ? mult_out[NUM_WRDS-2][WRD_BITS] : i_sq_rr[i-1][WRD_BITS]);
-        hmul_out_h_r[i] <= hmul_out_h_r[i][WRD_BITS-1:0] + (i == 0 ? mult_out[NUM_WRDS-2][WRD_BITS] : hmul_out_h_r[i-1][WRD_BITS]);
-      end
-  end else begin
-    i_sq_rr <= hmul_out_h;
-    hmul_out_h_r <= hmul_out_h;
-    o_mul <= hmul_out_h_r;
-  end
-  
-  if (state == IDLE)
-    i_sq_rr <= i_sq_r;
-
 end
 
 // Logic requiring reset
 always_ff @ (posedge i_clk) begin
   if (i_rst) begin
-    state <= IDLE;
-    ovrflw_cnt <= 0;
+    state <= 0;
+    state[IDLE] <= 1;
   end else begin
     state <= next_state;
-    if (state == MUL2_OVRFLW && state_r != MUL2_OVRFLW)
-      ovrflw_cnt <= ovrflw_cnt + 1;
   end
 end
+
+logic [2:0] mult_ctl;
+always_comb mult_ctl = {state[MUL1],
+                        state[MUL0],
+                        state[MUL2] || state[START]};
 
 multi_mode_multiplier #(
   .NUM_ELEMENTS    ( NUM_WRDS                        ),

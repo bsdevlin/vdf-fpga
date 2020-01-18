@@ -1,19 +1,19 @@
 .PHONY: help
 
 help::
-	$(ECHO) "Makefile Usage:"
-	$(ECHO) "  make all TARGET=<sw_emu/hw_emu/hw> DEVICE=<FPGA platform>"
-	$(ECHO) "      Generate the design for specified Target and Device."
-	$(ECHO) ""
-	$(ECHO) "  make clean "
-	$(ECHO) "      Remove the generated non-hardware files."
-	$(ECHO) ""
-	$(ECHO) "  make cleanall"
-	$(ECHO) "      Remove all the generated files."
-	$(ECHO) ""
-	$(ECHO) "  make check TARGET=<sw_emu/hw_emu/hw> DEVICE=<FPGA platform>"
-	$(ECHO) "      Run application in emulation."
-	$(ECHO) ""
+  $(ECHO) "Makefile Usage:"
+  $(ECHO) "  make all TARGET=<sw_emu/hw_emu/hw> DEVICE=<FPGA platform>"
+  $(ECHO) "      Generate the design for specified Target and Device."
+  $(ECHO) ""
+  $(ECHO) "  make clean "
+  $(ECHO) "      Remove the generated non-hardware files."
+  $(ECHO) ""
+  $(ECHO) "  make cleanall"
+  $(ECHO) "      Remove all the generated files."
+  $(ECHO) ""
+  $(ECHO) "  make check TARGET=<sw_emu/hw_emu/hw> DEVICE=<FPGA platform>"
+  $(ECHO) "      Run application in emulation."
+  $(ECHO) ""
 
 
 ############################################################################
@@ -55,17 +55,11 @@ LDCLFLAGS += --xp "vivado_prop:run.impl_1.\
                    {AlternateFlowWithRetiming}"
 
 # Vivado 2018.3
-#LDCLFLAGS += --xp "vivado_prop:run.impl_1.\
-#                   {STEPS.ROUTE_DESIGN.ARGS.DIRECTIVE}={AggressiveExplore}"
+LDCLFLAGS += --xp "vivado_prop:run.impl_1.\
+                   {STEPS.ROUTE_DESIGN.ARGS.DIRECTIVE}={AggressiveExplore}"
 LDCLFLAGS += --xp "vivado_prop:run.impl_1.\
                    {STEPS.POST_ROUTE_PHYS_OPT_DESIGN.ARGS.DIRECTIVE}=\
                    {AggressiveExplore}"
-                   
-
-LDCLFLAGS += --xp "vivado_prop:run.impl_1.\
-                   {STEPS.POST_ROUTE_PHYS_OPT_DESIGN.ARGS.IS_ENABLED}=\
-                   {1}"
-                   
 
 # Add in additional constraints, such as pblocks
 # This constraint places all performance critical logic in SLR2, which is
@@ -82,12 +76,7 @@ LDCLFLAGS += --xp "vivado_prop:run.impl_1.STEPS.OPT_DESIGN.TCL.PRE=$(TIMING_CONS
 
 #add in Post route tcl
 #POST_ROUTE_TCL     = $(realpath ../update_pll.tcl)
-#LDCLFLAGS += --xp "vivado_prop:run.impl_1.STEPS.POST_ROUTE_PHYS_OPT_DESIGN.TCL.POST=$(POST_ROUTE_TCL)"
-
-# This allows us to change frequency on MMCM
-#PRE_TCL     = $(realpath ../hls_hook.tcl)
-#LDCLFLAGS += --xp "prop:solution.hls_pre_tcl=$(PRE_TCL)"
-#LDCLFLAGS += --xp "param:compiler.skipTimingCheckAndFrequencyScaling=1"
+#LDCLFLAGS += --xp "vivado_prop:run.impl_1.STEPS.ROUTE_DESIGN.TCL.POST=$(POST_ROUTE_TCL)"
 
 ############################################################################
 # AWS/SDAccel configuration
@@ -107,7 +96,7 @@ HOST_SRCS         += $(HOST_SRC_DIR)/MSU.cpp
 HOST_SRCS         += $(HOST_SRC_DIR)/main.cpp
 
 CXXFLAGS          += -I$(HOST_SRC_DIR) -DFPGA=1 \
-	             -DMODULUS=\"$(MODULUS)\" \
+               -DMODULUS=\"$(MODULUS)\" \
                      -DMOD_LEN=$(MOD_LEN)
 ifeq ($(SIMPLE_SQ), 1)
 CXXFLAGS          += -DSIMPLE_SQ=1
@@ -168,7 +157,7 @@ BINARY_CONTAINER_AWS = vdf.$(TARGET).$(DSA).awsxclbin
 
 CP = cp -rf
 
-S3_BUCKET          = vdfsn-bdevlin
+S3_BUCKET          = vdfsn
 
 
 ############################################################################
@@ -183,30 +172,30 @@ exe: $(EXECUTABLE)
 
 # Gather source files needed to run the sdx GUI
 sdx:
-	mkdir -p                          sdx/src
-	cp $(HOST_SRCS)                   sdx/src
-	cp $(xcl2_HDRS)                   sdx/src
-	cp $(XCLBIN)/vdf.hw_emu.$(DSA).xo sdx/src
-	cp $(HOST_SRC_DIR)/*.cpp          sdx/src
-	cp $(HOST_SRC_DIR)/*.hpp          sdx/src
-	cp mem/*.dat                      sdx/src
+  mkdir -p                          sdx/src
+  cp $(HOST_SRCS)                   sdx/src
+  cp $(xcl2_HDRS)                   sdx/src
+  cp $(XCLBIN)/vdf.hw_emu.$(DSA).xo sdx/src
+  cp $(HOST_SRC_DIR)/*.cpp          sdx/src
+  cp $(HOST_SRC_DIR)/*.hpp          sdx/src
+  cp mem/*.dat                      sdx/src
 
 # Gather files needed to run on the FPGA
 .PHONY: to_f1
 to_f1: $(F1_FILE)
 
 $(F1_FILE): $(EXECUTABLE) $(BINARY_CONTAINER_AWS)
-	tar czvf $@ $^
+  tar czvf $@ $^
 
 # Register the new bitstream
 # This only works on an AWS host
 $(BINARY_CONTAINER_AWS): $(BINARY_CONTAINER)
-	cd $(XCLBIN)
-	$(SDACCEL_DIR)/tools/create_sdaccel_afi.sh \
-	   -xclbin=$(BINARY_CONTAINER) \
+  cd $(XCLBIN)
+  $(SDACCEL_DIR)/tools/create_sdaccel_afi.sh \
+     -xclbin=$(BINARY_CONTAINER) \
            -o=vdf.hw.xilinx_aws-vu9p-f1-04261818_dynamic_5_0 \
-	   -s3_bucket=$(S3_BUCKET) -s3_dcp_key=dcp -s3_logs_key=logs
-	cat *afi_id.txt
+     -s3_bucket=$(S3_BUCKET) -s3_dcp_key=dcp -s3_logs_key=logs
+  cat *afi_id.txt
 
 
 # Generate the LUTs. reduction_lut_000.dat will be present for any bitwidth.
@@ -215,48 +204,48 @@ $(BINARY_CONTAINER_XO): msuconfig.vh
 
 sdaccel.ini:
 ifeq ($(TRACE), 1)
-	echo "[Emulation]" > sdaccel.ini
-	echo "launch_waveform=batch" >> sdaccel.ini
-	echo "[Debug]" >> sdaccel.ini
-	echo "profile=true" >> sdaccel.ini
-	echo "timeline_trace=true" >> sdaccel.ini
-	echo "device_profile=true" >> sdaccel.ini
+  echo "[Emulation]" > sdaccel.ini
+  echo "launch_waveform=batch" >> sdaccel.ini
+  echo "[Debug]" >> sdaccel.ini
+  echo "profile=true" >> sdaccel.ini
+  echo "timeline_trace=true" >> sdaccel.ini
+  echo "device_profile=true" >> sdaccel.ini
 
 $(BINARY_CONTAINER_XO): sdaccel.ini
 else
-	rm -f sdaccel.ini
+  rm -f sdaccel.ini
 endif
 
 xo: $(XCLBIN)/vdf.$(TARGET).$(DSA).xo
 
 $(XCLBIN)/vdf.$(TARGET).$(DSA).xo:
-	mkdir -p ${XCLBIN}
-	$(VIVADO) -mode batch -source $(SCRIPTS_DIR)/gen_xo.tcl \
+  mkdir -p ${XCLBIN}
+  $(VIVADO) -mode batch -source $(SCRIPTS_DIR)/gen_xo.tcl \
                   -tclargs $@ vdf hw $(DEVICE)
 
 
 # Building kernel
 $(XCLBIN)/vdf.$(TARGET).$(DSA).xclbin: $(BINARY_CONTAINER_XO)
-	mkdir -p $(XCLBIN)
-	$(XOCC) $(CLFLAGS) $(LDCLFLAGS) \
+  mkdir -p $(XCLBIN)
+  $(XOCC) $(CLFLAGS) $(LDCLFLAGS) \
              -lo $(XCLBIN)/vdf.$(TARGET).$(DSA).xclbin \
              $(XCLBIN)/vdf.$(TARGET).$(DSA).xo
 
 # Building Host
 $(EXECUTABLE): $(HOST_SRCS) $(HOST_HDRS)
-	mkdir -p $(XCLBIN)
-	$(CXX) $(CXXFLAGS) $(HOST_SRCS) $(HOST_HDRS) -o '$@' $(LDFLAGS)
+  mkdir -p $(XCLBIN)
+  $(CXX) $(CXXFLAGS) $(HOST_SRCS) $(HOST_HDRS) -o '$@' $(LDFLAGS)
 
 emconfig:$(EMCONFIG_DIR)/emconfig.json
 $(EMCONFIG_DIR)/emconfig.json:
-	emconfigutil --platform $(DEVICE) --od $(EMCONFIG_DIR)
+  emconfigutil --platform $(DEVICE) --od $(EMCONFIG_DIR)
 
 check: all
 ifeq ($(TARGET),$(filter $(TARGET),sw_emu hw_emu))
-	$(CP) $(EMCONFIG_DIR)/emconfig.json .
-	XCL_EMULATION_MODE=$(TARGET) ./$(EXECUTABLE) $(HOST_FLAGS_HW_EMU)
+  $(CP) $(EMCONFIG_DIR)/emconfig.json .
+  XCL_EMULATION_MODE=$(TARGET) ./$(EXECUTABLE) $(HOST_FLAGS_HW_EMU)
 else
-	 ./$(EXECUTABLE) $(HOST_FLAGS_FPGA)
+   ./$(EXECUTABLE) $(HOST_FLAGS_FPGA)
 endif
 
 ifneq ($(TARGET),$(findstring $(TARGET), hw hw_emu))
@@ -267,14 +256,14 @@ endif
 
 # Cleaning stuff
 clean:
-	-$(RMDIR) $(EXECUTABLE) $(XCLBIN)/{*sw_emu*,*hw_emu*} 
-	-$(RMDIR) sdaccel_* TempConfig system_estimate.xtxt *.rpt
-	-$(RMDIR) src/*.ll _xocc_* .Xil emconfig.json 
-	-$(RMDIR) dltmp* xmltmp* *.log *.jou *.wcfg *.wdb
-	-$(RMDIR) mem
+  -$(RMDIR) $(EXECUTABLE) $(XCLBIN)/{*sw_emu*,*hw_emu*} 
+  -$(RMDIR) sdaccel_* TempConfig system_estimate.xtxt *.rpt
+  -$(RMDIR) src/*.ll _xocc_* .Xil emconfig.json 
+  -$(RMDIR) dltmp* xmltmp* *.log *.jou *.wcfg *.wdb
+  -$(RMDIR) mem
 
 cleanall: clean
-	-$(RMDIR) $(XCLBIN)
-	-$(RMDIR) _x.*
-	-$(RMDIR) ./tmp_kernel_pack* ./packaged_kernel* 
-	-$(RMDIR) mem
+  -$(RMDIR) $(XCLBIN)
+  -$(RMDIR) _x.*
+  -$(RMDIR) ./tmp_kernel_pack* ./packaged_kernel* 
+  -$(RMDIR) mem
