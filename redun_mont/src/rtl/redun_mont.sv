@@ -66,6 +66,12 @@ enum {IDLE  = 0,
       MUL1  = 3,
       MUL2  = 4,
       OVRFLW = 5} state_index_t;
+      
+typedef enum logic [2:0] {SQR  = 1 << 0,
+                          MUL_L = 1 << 1,
+                          MUL_H  = 1 << 2} mult_ctl_t;     
+      
+mult_ctl_t mult_ctl, next_mult_ctl;      
 
 // Assign input to multiplier
 always_comb begin
@@ -78,10 +84,13 @@ always_comb begin
   mul_b = i_sq_r_b;
 
   next_state = 0;
+  next_mult_ctl = SQR;
+  
   unique case (1'b1)
     state[IDLE]: begin
       mul_a = i_sq_r_a;
       mul_b = i_sq_r_b;
+      next_mult_ctl = SQR;
       if (i_val_r)
         next_state[START] = 1;
       else
@@ -90,22 +99,26 @@ always_comb begin
     state[START]: begin
       mul_a = i_sq_r_a;
       mul_b = i_sq_r_b;
+      next_mult_ctl = MUL_L;
       next_state[MUL0] = 1;
     end
     state[MUL0]: begin
       mul_a = mult_out_l;
       mul_b = to_redun(MONT_FACTOR);
+      next_mult_ctl = MUL_H;
       next_state[MUL1] = 1;
     end
     state[MUL1]: begin
       mul_a = mult_out_l;
       mul_a[NUM_WRDS-1][WRD_BITS] = 0;
       mul_b = to_redun(P);
+      next_mult_ctl = SQR;
       next_state[MUL2] = 1;
     end
     state[MUL2]: begin
       mul_a = hmul_out_h;
       mul_b = hmul_out_h;
+      next_mult_ctl = MUL_L;
       next_state[MUL0] = 1;
     end
     
@@ -113,16 +126,20 @@ always_comb begin
     state[OVRFLW]: begin
       mul_a = i_sq_r_a;
       mul_b = i_sq_r_b;
-      if (o_val)
+      if (o_val) begin
+        next_mult_ctl = SQR;
         next_state[START] = 1;
-      else
+      end else begin 
+        next_mult_ctl = MUL_L;
         next_state[OVRFLW] = 1;
+      end
     end
   endcase
   
   // Overflow overrides previous state
   if (mul2_ovrflw) begin
     next_state = 0;
+    next_mult_ctl = MUL_L;
     next_state[OVRFLW] = 1;
   end
 end
@@ -137,6 +154,8 @@ end
 
 // Logic without a reset
 always_ff @ (posedge i_clk) begin
+  mult_ctl <= next_mult_ctl;
+
   mult_out_l_r <= mult_out_l;
   mult_out_l_r[NUM_WRDS-1][WRD_BITS] <= 0;
   
@@ -212,11 +231,6 @@ always_ff @ (posedge i_clk) begin
     state <= next_state;
   end
 end
-
-logic [2:0] mult_ctl;
-always_comb mult_ctl = {state[MUL1],
-                        state[MUL0] || state[OVRFLW],
-                        state[MUL2] || state[START]};
 
 multi_mode_multiplier #(
   .NUM_ELEMENTS    ( NUM_WRDS                        ),
