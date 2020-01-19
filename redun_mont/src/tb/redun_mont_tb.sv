@@ -19,10 +19,10 @@ module redun_mont_tb ();
 import redun_mont_pkg::*;
 
 localparam CLK_PERIOD = 8000;  // Reference clock is 125MHz
-localparam T = 30;
+localparam T = 7;
 
 logic clk, rst;
-redun0_t in, out;
+redun0_t in, out, out_;
 logic in_val, out_val;
 logic [T_LEN-1:0] out_cnt;
 
@@ -78,7 +78,7 @@ initial begin
   a_ = to_mont(a);
 
   // Some values known to check corner case bugs
-  a_ = 'h169dc883e74b196ec8c19a022500b84d6702a2561f8fb9a5ef91c03321e5749d6f94f7422f9494f3062cad1b7e7cd26bf48c365e9d7b7ab71a6b398dc2b52c1c38f172c6b939f8f1f714f41f14f8ae81f15ed5518d246ab5146d2f1ae87fc0b7e55424c7a859f3bff40ecb87b9f04a0c95b7442fd860f429bf41b0fee3a4f5e1;
+  //a_ = 'h169dc883e74b196ec8c19a022500b84d6702a2561f8fb9a5ef91c03321e5749d6f94f7422f9494f3062cad1b7e7cd26bf48c365e9d7b7ab71a6b398dc2b52c1c38f172c6b939f8f1f714f41f14f8ae81f15ed5518d246ab5146d2f1ae87fc0b7e55424c7a859f3bff40ecb87b9f04a0c95b7442fd860f429bf41b0fee3a4f5e1;
 
   a = from_mont(a_);
   chk = a;
@@ -107,13 +107,13 @@ initial begin
       $display("ERROR - #%0d wrong", i);
       break;
     end
-
+    out_ = out;
     a_ = fe_mul_mont(a_, a_);
     @(posedge clk);
     i++;
   end
 
-  res = from_mont(from_redun(out));
+  res = from_mont(from_redun(out_));
   exp = mod_sq(a,  i);
 
   $display("Final result was:");
