@@ -22,9 +22,8 @@ import redun_mont_pkg::*;
 
 localparam int            CLK_PERIOD = 8000;  // Reference clock is 125MHz
 localparam [T_LEN-1:0]    START_CNT = 0;
-localparam [T_LEN-1:0]    END_CNT = 1;
-localparam [DAT_BITS-1:0] INIT_VALUE = 'h851698569993e83a65eb9c589d31d57613b9e0d304af253e72a25fb62d56a81322aa13a270c77f95a51d16e8e209a0277038ce55ddae57fbe0cec83f5be0b04d09c764c8f3c413cfd57c8a5d299c5cc82fd6dfdbd477a87715a0d413f32420fc7b34411325e1217a71096848fde90ec745558c7335696741d41c91186caf806b;
-
+localparam [T_LEN-1:0]    END_CNT = 100;
+localparam [DAT_BITS-1:0] INIT_VALUE = 'h0851698569993e83a65eb9c589d31d57613b9e0d304af253e72a25fb62d56a81322aa13a270c77f95a51d16e8e209a0277038ce55ddae57fbe0cec83f5be0b04d09c764c8f3c413cfd57c8a5d299c5cc82fd6dfdbd477a87715a0d413f32420fc7b34411325e1217a71096848fde90ec745558c7335696741d41c91186caf806b;
 localparam AXI_LEN = 32;
 
 logic clk, rst;
@@ -95,6 +94,10 @@ initial begin
   m_axis_if.rdy = 0;
   ap_start = 0;
   in_dat = {to_mont(INIT_VALUE), END_CNT, START_CNT};
+  
+  in_dat = 'h169dc883e74b196ec8c19a022500b84d6702a2561f8fb9a5ef91c03321e5749d6f94f7422f9494f3062cad1b7e7cd26bf48c365e9d7b7ab71a6b398dc2b52c1c38f172c6b939f8f1f714f41f14f8ae81f15ed5518d246ab5146d2f1ae87fc0b7e55424c7a859f3bff40ecb87b9f04a0c95b7442fd860f429bf41b0fee3a4f5e100000000000000640000000000000000;
+  
+  
   @(posedge clk);
   // Wait for reset to toggle
   while (rst != 1) @(posedge clk);
@@ -118,6 +121,7 @@ initial begin
     res += (out_dat[i*(WRD_BITS+1) +: WRD_BITS+1] << (i*WRD_BITS));
 
   $display("INFO: Result in Mont form - 0x%0x", res);
+  $display("original in was:\nx0%0x", from_mont(in_dat >> 128));
 
   res = from_mont(res);
   exp = mod_sq(INIT_VALUE,  (END_CNT-START_CNT));
