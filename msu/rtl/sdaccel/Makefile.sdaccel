@@ -39,7 +39,7 @@ LDCLFLAGS += -DMSU_SQ_OUT_BITS_DEF=$(SQ_OUT_BITS)
 
 
 LDCLFLAGS += --xp "vivado_prop:run.pfm_dynamic_vdf_1_0_synth_1.\
-                   {STEPS.SYNTH_DESIGN.ARGS.FANOUT_LIMIT}={100}"
+                   {STEPS.SYNTH_DESIGN.ARGS.FANOUT_LIMIT}={400}"
 #LDCLFLAGS += --xp "vivado_prop:run.impl_1.\
 #                   {STEPS.OPT_DESIGN.ARGS.DIRECTIVE}={Explore}"
 #LDCLFLAGS += --xp "vivado_prop:run.impl_1.\

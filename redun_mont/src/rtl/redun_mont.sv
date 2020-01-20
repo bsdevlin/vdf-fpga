@@ -124,15 +124,16 @@ always_comb begin
 
     // Here we need to calculate how much overflow
     state[OVRFLW]: begin
+      next_state[START] = 1; // debug - remove me
       mul_a = i_sq_r_a;
       mul_b = i_sq_r_b;
-      if (o_val) begin
+   /*   if (o_val) begin
         next_mult_ctl = SQR;
         next_state[START] = 1;
       end else begin
         next_mult_ctl = MUL_L;
         next_state[OVRFLW] = 1;
-      end
+      end*/
     end
   endcase
 
@@ -190,10 +191,6 @@ always_ff @ (posedge i_clk) begin
 
   i_val_r <= i_val;
 
-
-  // Detect that there might be overflow
-  mul2_ovrflw_dat <= mult_out[NUM_WRDS][WRD_BITS-1:0];
-
   if (state[OVRFLW]) begin
     i_sq_r_a <= mult_out_l_rrr;
     i_sq_r_b <= to_redun(P);
@@ -219,19 +216,21 @@ always_ff @ (posedge i_clk) begin
     o_val <= 0;
     o_val_d <= 0;
     mul2_ovrflw <= 0;
+    mul2_ovrflw_dat <= mult_out[NUM_WRDS][WRD_BITS-1:0];
   end else begin
     o_val_r <= state[MUL2];
     o_val_rr <= o_val_r;
     o_val <= (o_val_rr && ~mul2_ovrflw) || o_val_d[5];
     o_val_d <= {o_val_d, o_val_rr && mul2_ovrflw};
 
-    if (state[IDLE])
-      mul2_ovrflw <= 0;
+    mul2_ovrflw_dat <= mult_out[NUM_WRDS][WRD_BITS-1:0];
 
     if (&mul2_ovrflw_dat && state_r[MUL2]) begin
       mul2_ovrflw <= 1;
     end
-    if (o_val_d[4]) begin
+
+    if (state[IDLE] || o_val_d[4]) begin
+      mul2_ovrflw_dat <= 0;
       mul2_ovrflw <= 0;
     end
 
