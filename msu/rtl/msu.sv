@@ -214,7 +214,7 @@ module msu
       if (reset_1d) begin
         deadlock_timer <= 0;
       end else begin
-        deadlock_timer <= (sq_finished || state != STATE_COMPUTE) ? 0 : deadlock_timer + 1;
+        //deadlock_timer <= (sq_finished || state != STATE_COMPUTE) ? 0 : deadlock_timer + 1;
       end
     end
 

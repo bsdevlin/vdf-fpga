@@ -66,12 +66,12 @@ enum {IDLE  = 0,
       MUL1  = 3,
       MUL2  = 4,
       OVRFLW = 5} state_index_t;
-      
+
 typedef enum logic [2:0] {SQR  = 1 << 0,
                           MUL_L = 1 << 1,
-                          MUL_H  = 1 << 2} mult_ctl_t;     
-      
-mult_ctl_t mult_ctl, next_mult_ctl;      
+                          MUL_H  = 1 << 2} mult_ctl_t;
+
+mult_ctl_t mult_ctl, next_mult_ctl;
 
 // Assign input to multiplier
 always_comb begin
@@ -85,7 +85,7 @@ always_comb begin
 
   next_state = 0;
   next_mult_ctl = SQR;
-  
+
   unique case (1'b1)
     state[IDLE]: begin
       mul_a = i_sq_r_a;
@@ -121,7 +121,7 @@ always_comb begin
       next_mult_ctl = MUL_L;
       next_state[MUL0] = 1;
     end
-    
+
     // Here we need to calculate how much overflow
     state[OVRFLW]: begin
       mul_a = i_sq_r_a;
@@ -129,13 +129,13 @@ always_comb begin
       if (o_val) begin
         next_mult_ctl = SQR;
         next_state[START] = 1;
-      end else begin 
+      end else begin
         next_mult_ctl = MUL_L;
         next_state[OVRFLW] = 1;
       end
     end
   endcase
-  
+
   // Overflow overrides previous state
   if (mul2_ovrflw) begin
     next_state = 0;
@@ -149,7 +149,7 @@ always_comb begin
   mul_out_collapsed = 0;
   for (int i = 0; i < NUM_WRDS; i++)
     mul_out_collapsed += (mult_out_c1[i] << (i*WRD_BITS));
-       
+
 end
 
 // Logic without a reset
@@ -158,66 +158,53 @@ always_ff @ (posedge i_clk) begin
 
   mult_out_l_r <= mult_out_l;
   mult_out_l_r[NUM_WRDS-1][WRD_BITS] <= 0;
-  
+
   mult_out_l_rr <= mult_out_l_r;
   mult_out_l_rrr <= mul2_ovrflw ? mult_out_l_rrr : mult_out_l_rr;
-  
+
   mult_out_c0 <= mult_out_l;
   mult_out_c0[NUM_WRDS-1][WRD_BITS] <= 0;
   mult_out_c1 <=  mult_out_c0;
   mult_out_c2 <= mult_out_c1;
-  
+
   mul_out_collapsed_r <= mul_out_collapsed;
-    
+
   state_r <= state;
-  
+
   hmul_out_h_r <= hmul_out_h;
   hmul_out_h_rr <= hmul_out_h_r;
   o_mul <= hmul_out_h_rr;
-  
+
   // Register input
   if (state[IDLE]) begin
     i_sq_r <= i_sq;
     i_sq_r_a <= i_sq_r;
     i_sq_r_b <= i_sq_r;
   end
-  
+
   if (state[MUL0])
     for (int i = 0; i < NUM_WRDS; i++)
       tmp_h[i] <= mult_out[NUM_WRDS+i] + (i == 0 ? (mult_out[NUM_WRDS-1][WRD_BITS] + 1) : 0);
   else
     tmp_h <= to_redun(0);
-    
+
   i_val_r <= i_val;
-  
-  o_val_r <= state[MUL2];
-  o_val_rr <= o_val_r;
-  o_val <= (o_val_rr && ~mul2_ovrflw) || o_val_d[5];
-  o_val_d <= {o_val_d, o_val_rr && mul2_ovrflw};
-  
+
+
   // Detect that there might be overflow
   mul2_ovrflw_dat <= mult_out[NUM_WRDS][WRD_BITS-1:0];
-  if (state[IDLE])
-    mul2_ovrflw <= 0;
-    
-  if (&mul2_ovrflw_dat && state_r[MUL2]) begin
-    mul2_ovrflw <= 1;
-  end
-  if (o_val_d[4]) begin
-    mul2_ovrflw <= 0;
-  end
-  
+
   if (state[OVRFLW]) begin
     i_sq_r_a <= mult_out_l_rrr;
     i_sq_r_b <= to_redun(P);
-    
+
     // Need to add in overflow result, also can propigate carry one level here
     for (int i = 0; i < NUM_WRDS; i++)
       o_mul[i] <= o_mul[i][WRD_BITS-1:0] + (i == 0 ? mul_out_collapsed_r[NUM_WRDS*WRD_BITS +: WRD_BITS] : o_mul[i-1][WRD_BITS]);
-      
+
     if (o_val) begin
       i_sq_r_a <= o_mul;
-      i_sq_r_b <= o_mul;      
+      i_sq_r_b <= o_mul;
     end
   end
 end
@@ -227,7 +214,27 @@ always_ff @ (posedge i_clk) begin
   if (i_rst) begin
     state <= 0;
     state[IDLE] <= 1;
+    o_val_r <= 0;
+    o_val_rr <= 0;
+    o_val <= 0;
+    o_val_d <= 0;
+    mul2_ovrflw <= 0;
   end else begin
+    o_val_r <= state[MUL2];
+    o_val_rr <= o_val_r;
+    o_val <= (o_val_rr && ~mul2_ovrflw) || o_val_d[5];
+    o_val_d <= {o_val_d, o_val_rr && mul2_ovrflw};
+
+    if (state[IDLE])
+      mul2_ovrflw <= 0;
+
+    if (&mul2_ovrflw_dat && state_r[MUL2]) begin
+      mul2_ovrflw <= 1;
+    end
+    if (o_val_d[4]) begin
+      mul2_ovrflw <= 0;
+    end
+
     state <= next_state;
   end
 end

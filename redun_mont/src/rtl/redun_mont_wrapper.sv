@@ -43,14 +43,25 @@ always_comb begin
 end
 
 always_ff @ (posedge i_clk) begin
-  locked <= {locked, locked_o};
-  fifo_out_val <= {fifo_out_val, ~fifo_out_empty[0]};
+  if (i_reset) begin
+    locked <= 0;
+    fifo_out_val <= 0;
+  end else begin
+    locked <= {locked, locked_o};
+    fifo_out_val <= {fifo_out_val, ~fifo_out_empty[0]};
+  end
 end
 
 always_ff @ (posedge clk_int) begin
-  fifo_in_val <= {fifo_in_val, ~fifo_in_empty[0]};
-  locked_int <= {locked_int, locked_o};
-  reset_int <= ~locked_int[4];
+  if (i_reset) begin
+    fifo_in_val <= 0;
+    locked_int <= 0;
+    reset_int <= 1;
+  end else begin
+    fifo_in_val <= {fifo_in_val, ~fifo_in_empty[0]};
+    locked_int <= {locked_int, locked_o};
+    reset_int <= ~locked_int[4];
+  end
 end
 
 // Clock wizard to generate clock
@@ -65,94 +76,39 @@ clk_wiz_0 inst (
 genvar gi;
 generate
   for (gi = 0; gi < NUM_WRDS; gi++) begin: FIFO_GEN
-    if (WRD_BITS == 16) begin
-      fifo_generator_16 async_fifo_in (
-        .rst    ( i_reset || reset_int ),
-        .wr_clk ( i_clk        ),
-        .rd_clk ( clk_int ),
-        .din    ( i_sq_in[gi]  ),
-        .wr_en  ( i_start      ),
-        .rd_en  ( 1'd1         ),
-        .dout   ( sq_in[gi]    ),
-        .full   (),
-        .empty  ( fifo_in_empty[gi] ),
-        .wr_rst_busy(),
-        .rd_rst_busy()
-      );
-      fifo_generator_16 async_fifo_out (
-        .rst    ( i_reset || reset_int ),
-        .wr_clk ( clk_int ),
-        .rd_clk ( i_clk        ),
-        .din    ( mul_o[gi]    ),
-        .wr_en  ( valid_o      ),
-        .rd_en  ( 1'd1         ),
-        .dout   ( o_sq_out[gi] ),
-        .full   (),
-        .empty  ( fifo_out_empty[gi] ),
-        .wr_rst_busy(),
-        .rd_rst_busy()
-      );
-    end else if (WRD_BITS == 32) begin
-      fifo_generator_32 async_fifo_in (
-        .rst    ( i_reset || reset_int ),
-        .wr_clk ( i_clk        ),
-        .rd_clk ( clk_int ),
-        .din    ( i_sq_in[gi]  ),
-        .wr_en  ( i_start      ),
-        .rd_en  ( 1'd1         ),
-        .dout   ( sq_in[gi]    ),
-        .full   (),
-        .empty  ( fifo_in_empty[gi] ),
-        .wr_rst_busy(),
-        .rd_rst_busy()
-      );
-      fifo_generator_32 async_fifo_out (
-        .rst    ( i_reset || reset_int ),
-        .wr_clk ( clk_int ),
-        .rd_clk ( i_clk        ),
-        .din    ( mul_o[gi]    ),
-        .wr_en  ( valid_o      ),
-        .rd_en  ( 1'd1         ),
-        .dout   ( o_sq_out[gi] ),
-        .full   (),
-        .empty  ( fifo_out_empty[gi] ),
-        .wr_rst_busy(),
-        .rd_rst_busy()
-      );
-    end else if (WRD_BITS == 64) begin
-      fifo_generator_64 async_fifo_in (
-        .rst    ( i_reset || reset_int ),
-        .wr_clk ( i_clk        ),
-        .rd_clk ( clk_int ),
-        .din    ( i_sq_in[gi]  ),
-        .wr_en  ( i_start      ),
-        .rd_en  ( 1'd1         ),
-        .dout   ( sq_in[gi]    ),
-        .full   (),
-        .empty  ( fifo_in_empty[gi] ),
-        .wr_rst_busy(),
-        .rd_rst_busy()
-      );
-      fifo_generator_64 async_fifo_out (
-        .rst    ( i_reset || reset_int ),
-        .wr_clk ( clk_int ),
-        .rd_clk ( i_clk        ),
-        .din    ( mul_o[gi]    ),
-        .wr_en  ( valid_o      ),
-        .rd_en  ( 1'd1         ),
-        .dout   ( o_sq_out[gi] ),
-        .full   (),
-        .empty  ( fifo_out_empty[gi] ),
-        .wr_rst_busy(),
-        .rd_rst_busy()
-      );
-    end else $fatal(1, "Unsupported WRD_BITS");
+
+    fifo_generator_16 async_fifo_in (
+      .rst    ( i_reset || reset_int ),
+      .wr_clk ( i_clk        ),
+      .rd_clk ( clk_int      ),
+      .din    ( i_sq_in[gi]  ),
+      .wr_en  ( i_start      ),
+      .rd_en  ( 1'd1         ),
+      .dout   ( sq_in[gi]    ),
+      .full   (),
+      .empty  ( fifo_in_empty[gi] ),
+      .wr_rst_busy(),
+      .rd_rst_busy()
+    );
+    fifo_generator_16 async_fifo_out (
+      .rst    ( i_reset || reset_int ),
+      .wr_clk ( clk_int      ),
+      .rd_clk ( i_clk        ),
+      .din    ( mul_o[gi]    ),
+      .wr_en  ( valid_o      ),
+      .rd_en  ( 1'd1         ),
+      .dout   ( o_sq_out[gi] ),
+      .full   (),
+      .empty  ( fifo_out_empty[gi] ),
+      .wr_rst_busy(),
+      .rd_rst_busy()
+    );
 
   end
 endgenerate
 
 redun_mont redun_mont (
-  .i_clk  ( clk_int                ),
+  .i_clk  ( clk_int                     ),
   .i_rst  ( reset_int                   ),
   .i_sq   ( sq_in                       ),
   .i_val  ( fifo_in_val[FIFO_RD_LTCY-1] ),
