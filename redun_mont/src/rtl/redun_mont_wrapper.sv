@@ -53,15 +53,9 @@ always_ff @ (posedge i_clk) begin
 end
 
 always_ff @ (posedge clk_int) begin
-  if (i_reset) begin
-    fifo_in_val <= 0;
-    locked_int <= 0;
-    reset_int <= 1;
-  end else begin
-    fifo_in_val <= {fifo_in_val, ~fifo_in_empty[0]};
-    locked_int <= {locked_int, locked_o};
-    reset_int <= ~locked_int[4];
-  end
+  fifo_in_val <= {fifo_in_val, ~fifo_in_empty[0]};
+  locked_int <= {locked_int, locked_o};
+  reset_int <= ~locked_int[4];
 end
 
 // Clock wizard to generate clock
