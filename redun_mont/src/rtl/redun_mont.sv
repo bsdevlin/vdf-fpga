@@ -43,7 +43,7 @@ module redun_mont
   output logic    o_val
 );
 
-redun0_t mul_a, mul_b;
+redun0_t mul_a, mul_b, mul_o;
 redun0_t hmul_out_h, hmul_out_h_r, hmul_out_h_rr, tmp_h;
 redun0_t i_sq_r, i_sq_r_a, i_sq_r_b;
 redun0_t mult_out_l, mult_out_l_r, mult_out_l_rr, mult_out_l_rrr;
@@ -53,9 +53,9 @@ redun1_t mult_out;
 redun0_t mult_out_c0, mult_out_c1, mult_out_c2;
 logic [(NUM_WRDS+1)*WRD_BITS-1:0] mul_out_collapsed, mul_out_collapsed_r;
 
-logic [5:0] state, next_state, state_r;
+logic [4:0] state, next_state, state_r;
 logic o_val_r, i_val_r, o_val_rr;
-logic [5:0] o_val_d;
+logic [7:0] o_val_d;
 
 logic mul2_ovrflw;
 logic [WRD_BITS-1:0] mul2_ovrflw_dat;
@@ -64,14 +64,14 @@ enum {IDLE  = 0,
       START = 1,
       MUL0  = 2,
       MUL1  = 3,
-      MUL2  = 4,
-      OVRFLW = 5} state_index_t;
+      MUL2  = 4} state_index_t;
 
 typedef enum logic [2:0] {SQR  = 1 << 0,
                           MUL_L = 1 << 1,
                           MUL_H  = 1 << 2} mult_ctl_t;
-
 mult_ctl_t mult_ctl, next_mult_ctl;
+
+logic [3:0] mul_in_sel;
 
 // Assign input to multiplier
 always_comb begin
@@ -80,16 +80,11 @@ always_comb begin
 
   mult_out_l = mult_out[0:NUM_WRDS-1];
 
-  mul_a = i_sq_r_a;
-  mul_b = i_sq_r_b;
-
   next_state = 0;
   next_mult_ctl = SQR;
 
   unique case (1'b1)
     state[IDLE]: begin
-      mul_a = i_sq_r_a;
-      mul_b = i_sq_r_b;
       next_mult_ctl = SQR;
       if (i_val_r)
         next_state[START] = 1;
@@ -97,60 +92,95 @@ always_comb begin
         next_state[IDLE] = 1;
     end
     state[START]: begin
-      mul_a = i_sq_r_a;
-      mul_b = i_sq_r_b;
-      next_mult_ctl = MUL_L;
-      next_state[MUL0] = 1;
+      if (mul2_ovrflw) begin
+        if (o_val_d[6]) begin
+          next_mult_ctl = SQR;
+          next_state[START] = 1;
+        end else begin
+          next_mult_ctl = MUL_L;
+          next_state[START] = 1;
+        end
+      end else begin
+        next_mult_ctl = MUL_L;
+        next_state[MUL0] = 1;
+      end
     end
     state[MUL0]: begin
-      mul_a = mult_out_l;
-      mul_b = to_redun(MONT_FACTOR);
-      next_mult_ctl = MUL_H;
+      next_mult_ctl = MUL_H;      
       next_state[MUL1] = 1;
     end
     state[MUL1]: begin
-      mul_a = mult_out_l;
-      mul_a[NUM_WRDS-1][WRD_BITS] = 0;
-      mul_b = to_redun(P);
       next_mult_ctl = SQR;
       next_state[MUL2] = 1;
     end
     state[MUL2]: begin
-      mul_a = hmul_out_h;
-      mul_b = hmul_out_h;
       next_mult_ctl = MUL_L;
       next_state[MUL0] = 1;
-    end
-
-    // Here we need to calculate how much overflow
-    state[OVRFLW]: begin
-      next_state[START] = 1; // debug - remove me
-      mul_a = i_sq_r_a;
-      mul_b = i_sq_r_b;
-   /*   if (o_val) begin
-        next_mult_ctl = SQR;
-        next_state[START] = 1;
-      end else begin
-        next_mult_ctl = MUL_L;
-        next_state[OVRFLW] = 1;
-      end*/
     end
   endcase
 
   // Overflow overrides previous state
   if (mul2_ovrflw) begin
     next_state = 0;
-    next_mult_ctl = MUL_L;
-    next_state[OVRFLW] = 1;
+    next_state[START] = 1;
   end
 end
+
+// Logic for selecting where inputs for the multiplier come from
+always_ff @ (posedge i_clk) begin
+  mul_in_sel <= 0;
+  unique case (1'b1)
+    state[IDLE]: begin
+      mul_in_sel[0] <= 1;
+    end
+    state[START]: begin
+      if (mul2_ovrflw) begin
+        mul_in_sel[0] <= 1;
+      end else begin
+        mul_in_sel[1] <= 1;
+      end
+    end
+    state[MUL0]: begin
+      mul_in_sel[2] <= 1;
+    end
+    state[MUL1]: begin
+      mul_in_sel[3] <= 1;
+    end
+    state[MUL2]: begin
+      mul_in_sel[1] <= 1;
+    end
+  endcase
+end
+
+always_comb begin
+  unique case (1'b1)
+    mul_in_sel[0]: begin
+      mul_a = i_sq_r_a;
+      mul_b = i_sq_r_b;
+    end
+    mul_in_sel[1]: begin
+      mul_a = mult_out_l;
+      mul_b = to_redun(MONT_FACTOR);
+    end    
+    mul_in_sel[2]: begin
+      mul_a = mult_out_l;
+      mul_a[NUM_WRDS-1][WRD_BITS] = 0;
+      mul_b = to_redun(P);
+    end
+    mul_in_sel[3]: begin
+      mul_a = hmul_out_h;
+      mul_b = hmul_out_h;
+    end      
+  endcase
+end
+
+
 
 // Logic for propigating carry in case of overflow
 always_comb begin
   mul_out_collapsed = 0;
   for (int i = 0; i < NUM_WRDS; i++)
     mul_out_collapsed += (mult_out_c1[i] << (i*WRD_BITS));
-
 end
 
 // Logic without a reset
@@ -174,13 +204,16 @@ always_ff @ (posedge i_clk) begin
 
   hmul_out_h_r <= hmul_out_h;
   hmul_out_h_rr <= hmul_out_h_r;
-  o_mul <= hmul_out_h_rr;
+  mul_o <= hmul_out_h_r;
 
   // Register input
+  i_sq_r <= i_sq;
   if (state[IDLE]) begin
-    i_sq_r <= i_sq;
     i_sq_r_a <= i_sq_r;
     i_sq_r_b <= i_sq_r;
+  end else begin
+    i_sq_r_a <= mul_o;
+    i_sq_r_b <= mul_o;
   end
 
   if (state[MUL0])
@@ -191,19 +224,23 @@ always_ff @ (posedge i_clk) begin
 
   i_val_r <= i_val;
 
-  if (state[OVRFLW]) begin
+  if (mul2_ovrflw) begin
     i_sq_r_a <= mult_out_l_rrr;
     i_sq_r_b <= to_redun(P);
 
     // Need to add in overflow result, also can propigate carry one level here
     for (int i = 0; i < NUM_WRDS; i++)
-      o_mul[i] <= o_mul[i][WRD_BITS-1:0] + (i == 0 ? mul_out_collapsed_r[NUM_WRDS*WRD_BITS +: WRD_BITS] : o_mul[i-1][WRD_BITS]);
+      mul_o[i] <= mul_o[i][WRD_BITS-1:0] + (i == 0 ? mul_out_collapsed_r[NUM_WRDS*WRD_BITS +: WRD_BITS] : mul_o[i-1][WRD_BITS]);
 
-    if (o_val) begin
-      i_sq_r_a <= o_mul;
-      i_sq_r_b <= o_mul;
-    end
   end
+  
+  if (o_val_d[6]) begin
+    i_sq_r_a <= mul_o;
+    i_sq_r_b <= mul_o;
+  end
+  
+  o_mul <= mul_o;
+  
 end
 
 // Logic requiring reset
@@ -220,7 +257,7 @@ always_ff @ (posedge i_clk) begin
   end else begin
     o_val_r <= state[MUL2];
     o_val_rr <= o_val_r;
-    o_val <= (o_val_rr && ~mul2_ovrflw) || o_val_d[5];
+    o_val <= (o_val_rr && ~mul2_ovrflw) || o_val_d[6];
     o_val_d <= {o_val_d, o_val_rr && mul2_ovrflw};
 
     mul2_ovrflw_dat <= mult_out[NUM_WRDS][WRD_BITS-1:0];
@@ -229,7 +266,7 @@ always_ff @ (posedge i_clk) begin
       mul2_ovrflw <= 1;
     end
 
-    if (state[IDLE] || o_val_d[4]) begin
+    if (state[IDLE] || o_val_d[6]) begin
       mul2_ovrflw_dat <= 0;
       mul2_ovrflw <= 0;
     end
