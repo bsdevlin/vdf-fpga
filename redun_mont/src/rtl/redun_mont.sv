@@ -52,6 +52,7 @@ redun1_t mult_out;
 // This version of output has the carry propigated over 3 cycles
 redun0_t mult_out_c0, mult_out_c1, mult_out_c2;
 logic [(NUM_WRDS+1)*WRD_BITS-1:0] mul_out_collapsed, mul_out_collapsed_r;
+logic [(NUM_WRDS+1)*WRD_BITS-1:0] mult_out_l_collapsed;
 
 logic [4:0] state, next_state, state_r;
 logic o_val_r, i_val_r, o_val_rr;
@@ -181,6 +182,10 @@ always_comb begin
   mul_out_collapsed = 0;
   for (int i = 0; i < NUM_WRDS; i++)
     mul_out_collapsed += (mult_out_c1[i] << (i*WRD_BITS));
+    
+  mult_out_l_collapsed = 0;
+  for (int i = 0; i < NUM_WRDS; i++)
+    mult_out_l_collapsed += (mult_out_l[i] << (i*WRD_BITS));
 end
 
 // Logic without a reset
@@ -218,7 +223,7 @@ always_ff @ (posedge i_clk) begin
 
   if (state[MUL0])
     for (int i = 0; i < NUM_WRDS; i++)
-      tmp_h[i] <= mult_out[NUM_WRDS+i] + (i == 0 ? (mult_out[NUM_WRDS-1][WRD_BITS] + 1) : 0);
+      tmp_h[i] <= mult_out[NUM_WRDS+i] + (i == 0 ? (mult_out_l_collapsed[NUM_WRDS*WRD_BITS +: WRD_BITS] + 1) : 0);
   else
     tmp_h <= to_redun(0);
 
@@ -253,7 +258,7 @@ always_ff @ (posedge i_clk) begin
     o_val <= 0;
     o_val_d <= 0;
     mul2_ovrflw <= 0;
-    mul2_ovrflw_dat <= mult_out[NUM_WRDS][WRD_BITS-1:0];
+    mul2_ovrflw_dat <= 0;
   end else begin
     o_val_r <= state[MUL2];
     o_val_rr <= o_val_r;
