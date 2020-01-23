@@ -107,7 +107,7 @@ always_comb begin
       end
     end
     state[MUL0]: begin
-      next_mult_ctl = MUL_H;      
+      next_mult_ctl = MUL_H;
       next_state[MUL1] = 1;
     end
     state[MUL1]: begin
@@ -162,7 +162,7 @@ always_comb begin
     mul_in_sel[1]: begin
       mul_a = mult_out_l;
       mul_b = to_redun(MONT_FACTOR);
-    end    
+    end
     mul_in_sel[2]: begin
       mul_a = mult_out_l;
       mul_a[NUM_WRDS-1][WRD_BITS] = 0;
@@ -171,7 +171,7 @@ always_comb begin
     mul_in_sel[3]: begin
       mul_a = hmul_out_h;
       mul_b = hmul_out_h;
-    end      
+    end
   endcase
 end
 
@@ -182,7 +182,7 @@ always_comb begin
   mul_out_collapsed = 0;
   for (int i = 0; i < NUM_WRDS; i++)
     mul_out_collapsed += (mult_out_c1[i] << (i*WRD_BITS));
-    
+
   mult_out_l_collapsed = 0;
   for (int i = 0; i < NUM_WRDS; i++)
     mult_out_l_collapsed += (mult_out_l[i] << (i*WRD_BITS));
@@ -238,14 +238,14 @@ always_ff @ (posedge i_clk) begin
       mul_o[i] <= mul_o[i][WRD_BITS-1:0] + (i == 0 ? mul_out_collapsed_r[NUM_WRDS*WRD_BITS +: WRD_BITS] : mul_o[i-1][WRD_BITS]);
 
   end
-  
+
   if (o_val_d[6]) begin
     i_sq_r_a <= mul_o;
     i_sq_r_b <= mul_o;
   end
-  
+
   o_mul <= mul_o;
-  
+
 end
 
 // Logic requiring reset
@@ -265,7 +265,7 @@ always_ff @ (posedge i_clk) begin
     o_val <= (o_val_rr && ~mul2_ovrflw) || o_val_d[6];
     o_val_d <= {o_val_d, o_val_rr && mul2_ovrflw};
 
-    mul2_ovrflw_dat <= mult_out[NUM_WRDS][WRD_BITS-1:0];
+    mul2_ovrflw_dat <= state_r[MUL1] ? mult_out[NUM_WRDS][WRD_BITS-1:0] : {WRD_BITS{1'd0}};
 
     if (&mul2_ovrflw_dat && state_r[MUL2]) begin
       mul2_ovrflw <= 1;
