@@ -25,7 +25,8 @@ module msu
 
     parameter int SQ_IN_BITS            = redun_mont_pkg::DAT_BITS,
     parameter int SQ_OUT_BITS           = redun_mont_pkg::TOT_BITS, // Output includes redundant bit
-    parameter int T_LEN                 = 64
+    parameter int T_LEN                 = 64,
+    parameter bit ENB_DEADLOCK          = 0
     )
    (
     input wire                          clk,
@@ -214,7 +215,8 @@ module msu
       if (reset_1d) begin
         deadlock_timer <= 0;
       end else begin
-        deadlock_timer <= (sq_finished || state != STATE_COMPUTE) ? 0 : deadlock_timer + 1;
+        if (ENB_DEADLOCK == 1)
+          deadlock_timer <= (sq_finished || state != STATE_COMPUTE) ? 0 : deadlock_timer + 1;
       end
     end
 

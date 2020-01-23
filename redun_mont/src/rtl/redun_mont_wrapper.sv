@@ -35,7 +35,7 @@ logic [FIFO_RD_LTCY-1:0] fifo_in_val, fifo_out_val;
 logic clk_int;
 logic [4:0] locked;
 logic [4:0] locked_int;
-logic reset_int;
+logic reset_int, reset_r;
 
 always_comb begin
   o_valid = fifo_out_val[FIFO_RD_LTCY-1];
@@ -55,7 +55,7 @@ end
 always_ff @ (posedge clk_int) begin
   fifo_in_val <= {fifo_in_val, ~fifo_in_empty[0]};
   locked_int <= {locked_int, locked_o};
-  reset_int <= ~locked_int[4];
+  reset_int <= ~locked_int[4] || i_reset;
 end
 
 // Clock wizard to generate clock
