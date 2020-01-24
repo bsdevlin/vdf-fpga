@@ -54,22 +54,23 @@ redun0_t mult_out_c0, mult_out_c1, mult_out_c2;
 logic [(NUM_WRDS+1)*WRD_BITS-1:0] mul_out_collapsed, mul_out_collapsed_r;
 logic [(NUM_WRDS+1)*WRD_BITS-1:0] mult_out_l_collapsed;
 
-logic [4:0] state, next_state, state_r;
+
 logic o_val_r, i_val_r, o_val_rr;
 logic [7:0] o_val_d;
 
 logic mul2_ovrflw;
 logic [WRD_BITS-1:0] mul2_ovrflw_dat;
 
-enum {IDLE  = 0,
-      START = 1,
-      MUL0  = 2,
-      MUL1  = 3,
-      MUL2  = 4} state_index_t;
+typedef enum logic [4:0] {IDLE  = 1 << 0,
+                          START = 1 << 1,
+                          MUL0  = 1 << 2,
+                          MUL1  = 1 << 3,
+                          MUL2  = 1 << 4} state_index_t;
+state_index_t state, next_state, state_r;
 
-typedef enum logic [2:0] {SQR  = 1 << 0,
+typedef enum logic [2:0] {SQR   = 1 << 0,
                           MUL_L = 1 << 1,
-                          MUL_H  = 1 << 2} mult_ctl_t;
+                          MUL_H = 1 << 2} mult_ctl_t;
 mult_ctl_t mult_ctl, next_mult_ctl;
 
 logic [3:0] mul_in_sel;
@@ -81,73 +82,72 @@ always_comb begin
 
   mult_out_l = mult_out[0:NUM_WRDS-1];
 
-  next_state = 0;
+  next_state = IDLE;
   next_mult_ctl = SQR;
 
-  unique case (1'b1)
-    state[IDLE]: begin
+  unique case (state)
+    IDLE: begin
       next_mult_ctl = SQR;
       if (i_val_r)
-        next_state[START] = 1;
+        next_state = START;
       else
-        next_state[IDLE] = 1;
+        next_state = IDLE;
     end
-    state[START]: begin
+    START: begin
       if (mul2_ovrflw) begin
         if (o_val_d[6]) begin
           next_mult_ctl = SQR;
-          next_state[START] = 1;
+          next_state = START;
         end else begin
           next_mult_ctl = MUL_L;
-          next_state[START] = 1;
+          next_state = START;
         end
       end else begin
         next_mult_ctl = MUL_L;
-        next_state[MUL0] = 1;
+        next_state = MUL0;
       end
     end
-    state[MUL0]: begin
+    MUL0: begin
       next_mult_ctl = MUL_H;
-      next_state[MUL1] = 1;
+      next_state = MUL1;
     end
-    state[MUL1]: begin
+    MUL1: begin
       next_mult_ctl = SQR;
-      next_state[MUL2] = 1;
+      next_state = MUL2;
     end
-    state[MUL2]: begin
+    MUL2: begin
       next_mult_ctl = MUL_L;
-      next_state[MUL0] = 1;
+      next_state = MUL0;
     end
   endcase
 
   // Overflow overrides previous state
   if (mul2_ovrflw) begin
-    next_state = 0;
-    next_state[START] = 1;
+    next_state = START;
   end
 end
 
 // Logic for selecting where inputs for the multiplier come from
 always_ff @ (posedge i_clk) begin
   mul_in_sel <= 0;
-  unique case (1'b1)
-    state[IDLE]: begin
+  unique case (state)
+    IDLE: begin
       mul_in_sel[0] <= 1;
     end
-    state[START]: begin
+    START: begin
       if (mul2_ovrflw) begin
         mul_in_sel[0] <= 1;
       end else begin
         mul_in_sel[1] <= 1;
       end
     end
-    state[MUL0]: begin
+    MUL0: begin
       mul_in_sel[2] <= 1;
     end
-    state[MUL1]: begin
+    MUL1: begin
       mul_in_sel[3] <= 1;
     end
-    state[MUL2]: begin
+    MUL2: begin
       mul_in_sel[1] <= 1;
     end
   endcase
@@ -174,8 +174,6 @@ always_comb begin
     end
   endcase
 end
-
-
 
 // Logic for propigating carry in case of overflow
 always_comb begin
@@ -213,7 +211,7 @@ always_ff @ (posedge i_clk) begin
 
   // Register input
   i_sq_r <= i_sq;
-  if (state[IDLE]) begin
+  if (state == IDLE) begin
     i_sq_r_a <= i_sq_r;
     i_sq_r_b <= i_sq_r;
   end else begin
@@ -221,7 +219,7 @@ always_ff @ (posedge i_clk) begin
     i_sq_r_b <= mul_o;
   end
 
-  if (state[MUL0])
+  if (state == MUL0)
     for (int i = 0; i < NUM_WRDS; i++)
       tmp_h[i] <= mult_out[NUM_WRDS+i] + (i == 0 ? (mult_out_l_collapsed[NUM_WRDS*WRD_BITS +: WRD_BITS] + 1) : 0);
   else
@@ -245,14 +243,12 @@ always_ff @ (posedge i_clk) begin
   end
 
   o_mul <= mul_o;
-
 end
 
 // Logic requiring reset
 always_ff @ (posedge i_clk) begin
   if (i_rst) begin
-    state <= 0;
-    state[IDLE] <= 1;
+    state <= IDLE;
     o_val_r <= 0;
     o_val_rr <= 0;
     o_val <= 0;
@@ -260,20 +256,20 @@ always_ff @ (posedge i_clk) begin
     mul2_ovrflw <= 0;
     mul2_ovrflw_dat <= 0;
   end else begin
-    o_val_r <= state[MUL2];
+    o_val_r <= state == MUL2;
     o_val_rr <= o_val_r;
     o_val <= (o_val_rr && ~mul2_ovrflw) || o_val_d[6];
     o_val_d <= {o_val_d, o_val_rr && mul2_ovrflw};
 
-    mul2_ovrflw_dat <= state_r[MUL1] ? mult_out[NUM_WRDS][WRD_BITS-1:0] : {WRD_BITS{1'd0}};
+    mul2_ovrflw_dat <= state_r == MUL1 ? mult_out[NUM_WRDS][WRD_BITS-1:0] : {WRD_BITS{1'd0}};
 
     // We check for a condition we we might have overflow in the multiplier in the lower words,
     // so we actually need to reverse the multiplication and we do it to check
-    if ((mul2_ovrflw_dat >= ({WRD_BITS{1'b1}} - NUM_WRDS)) && state_r[MUL2]) begin
+    if ((mul2_ovrflw_dat >= (1 << WRD_BITS) - NUM_WRDS) && state_r[MUL2]) begin
       mul2_ovrflw <= 1;
     end
 
-    if (state[IDLE] || o_val_d[6]) begin
+    if (state == IDLE || o_val_d[6]) begin
       mul2_ovrflw_dat <= 0;
       mul2_ovrflw <= 0;
     end
