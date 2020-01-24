@@ -11,3 +11,5 @@ create_pblock SLR2
 add_cells_to_pblock [get_pblocks SLR2] [get_cells -quiet [list redun_wrapper/redun_mont]]
 add_cells_to_pblock SLR2 [get_cells [list redun_wrapper/inst]]
 resize_pblock [get_pblocks SLR2] -add {CLOCKREGION_X0Y10:CLOCKREGION_X5Y14}
+
+set_false_path -to [get_cells redun_wrapper/reset_int*]
