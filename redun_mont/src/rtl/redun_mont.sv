@@ -267,7 +267,9 @@ always_ff @ (posedge i_clk) begin
 
     mul2_ovrflw_dat <= state_r[MUL1] ? mult_out[NUM_WRDS][WRD_BITS-1:0] : {WRD_BITS{1'd0}};
 
-    if (&mul2_ovrflw_dat && state_r[MUL2]) begin
+    // We check for a condition we we might have overflow in the multiplier in the lower words,
+    // so we actually need to reverse the multiplication and we do it to check
+    if ((mul2_ovrflw_dat >= ({WRD_BITS{1'b1}} - NUM_WRDS)) && state_r[MUL2]) begin
       mul2_ovrflw <= 1;
     end
 
