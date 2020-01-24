@@ -8,7 +8,7 @@ To submit your design:
 - email your final repo + commit to hello@vdfalliance.org
 
 Team name: Benjamin Devlin
-Expected result (avg ns/square): 44.1ns/sq (3 clocks @ 68MHz)
+Expected result (avg ns/square): 45ns/sq (3 clocks @ 66MHz)
 
 Design documentation (below):
 
@@ -19,12 +19,12 @@ Design documentation (below):
   - We do not require the final check to see if we are larger than the modulus due to increasing the number of words used by 1 in the multiplier
   - Final addition step is combined into the multiplier adder tree to save a clock cycle
   - Uses log3 adders rather than log2 for shorter critical path / less LUT usage
+  - If we detect possible overflow (all F's on boundary word), we reverse the multiplier direction and do the full calculation (adds ~ 5 clock cycles)
 - Redundant binary representation of 17 bits for a 16 bit word
 - Created a multi-mode multiplier that uses 2272 DSPs to fit on one SLR (2280)
   - Uses control to select what mode (square / lower half / upper half), control signals one-hot
-  - Calculates 2 additional words past the shift/mask boundary so that we can detect and adjust overflow
-- MMCM PLL to allow to adjust clock period after place and route to operate at max frequency
-  - We over constrain and then adjust down in tcl script binary seach so timing passes.
+  - Calculates 2 additional words past the shift/mask boundary so that we can detect possible overflow and correct result
+- MMCM PLL to get desired clock frequency
 - Clock crossing done in wrapper using per-word FIFOs
 - Conversion in and out of Montgomery form is done in the SW wrapper
 - Power ramp up not used
