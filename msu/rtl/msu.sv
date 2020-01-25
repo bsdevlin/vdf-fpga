@@ -97,7 +97,6 @@ module msu
    logic                         axi_in_shift;
 
    logic locked;
-   logic [9:0] deadlock_timer;
 
    genvar                        gi;
 
@@ -188,7 +187,7 @@ module msu
          t_current            <= t_current + 1;
       end
    end
-   assign final_iteration = (sq_finished && (t_current == t_final-1)) || &deadlock_timer;
+   assign final_iteration = sq_finished && (t_current == t_final-1);
 
    assign sq_start                  = state == STATE_START;
    assign s_axis_xfer_size_in_bytes = (AXI_IN_COUNT*AXI_BYTES_PER_TXN);
@@ -210,17 +209,6 @@ module msu
       .o_locked ( locked      )
     );
 
-    // This is to make sure we don't deadlock
-    always_ff @(posedge clk) begin
-      if (reset_1d) begin
-        deadlock_timer <= 0;
-      end else begin
-        if (ENB_DEADLOCK == 1)
-          deadlock_timer <= (sq_finished || state != STATE_COMPUTE) ? 0 : deadlock_timer + 1;
-      end
-    end
-
-
     // Convert our data type
     always_comb begin
       sq_in_int = to_redun(0);
@@ -239,7 +227,7 @@ module msu
    always @(posedge clk) begin
       if(final_iteration) begin
          axi_out_count                 <= 0;
-         axi_out[T_LEN-1:0]            <= &deadlock_timer ? {T_LEN{1'b1}} : t_current;
+         axi_out[T_LEN-1:0]            <= t_current;
          axi_out[AXI_OUT_BITS-1:T_LEN] <= sq_out;
       end else if(state == STATE_SEND && m_axis_tready) begin
          axi_out                       <= { {AXI_LEN{1'b0}},
