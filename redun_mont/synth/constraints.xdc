@@ -1,8 +1,6 @@
 
 create_clock -period 8.000 -name i_clk -waveform {0.000 4.000} [get_ports -filter { NAME =~  "clk" && DIRECTION == "IN" }]
 
-set_false_path -from [get_clocks redun_wrapper/inst/inst/clk_in1] -to [get_cells {redun_wrapper/locked_int[0]}]
-
 create_pblock sl_exclusion
 resize_pblock [get_pblocks sl_exclusion] -add {CLOCKREGION_X4Y0:CLOCKREGION_X5Y9}
 set_property EXCLUDE_PLACEMENT 1 [get_pblocks sl_exclusion]
