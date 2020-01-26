@@ -293,12 +293,12 @@ always_ff @ (posedge i_clk or posedge i_rst) begin
     state_r <= state;
 
     // Make sure we don't equalize while other stages are doing so, detect the worst case overflow condition
-    if ((mul0_bndry >= (1 << WRD_BITS) - BOUNDARY_THRESHOLD) && ~(mul0_equalize || mul1_equalize || mul2_equalize || mul2_carry))
+  /*   if ((mul0_bndry >= (1 << WRD_BITS) - BOUNDARY_THRESHOLD) && ~(mul0_equalize || mul1_equalize || mul2_equalize || mul2_carry))
       mul0_equalize <= 1;
     if ((mul1_bndry >= (1 << WRD_BITS) - BOUNDARY_THRESHOLD) && ~(mul0_equalize || mul1_equalize || mul2_equalize || mul2_carry))
       mul1_equalize <= 1;
     if ((mul2_bndry >= (1 << WRD_BITS) - BOUNDARY_THRESHOLD) && ~(mul0_equalize || mul1_equalize || mul2_equalize || mul2_carry))
-      mul2_equalize <= 1;
+      mul2_equalize <= 1;*/
 
     if (state_r == MUL1) mul0_equalize <= 0;
     if (state_r == MUL2) mul1_equalize <= 0;
