@@ -53,10 +53,11 @@ always_ff @ (posedge i_clk) begin
 end
 
 always_ff @ (posedge clk_int) begin
+  reset_int <= ~locked_int[4] || i_reset;
   fifo_in_val <= {fifo_in_val, ~fifo_in_empty[0]};
   locked_int <= {locked_int, locked_o};
-  reset_int <= ~locked_int[4] || i_reset;
 end
+
 
 // Clock wizard to generate clock
 clk_wiz_0 inst (

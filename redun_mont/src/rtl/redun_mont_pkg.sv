@@ -35,9 +35,9 @@ package redun_mont_pkg;
 
   // These are needed to make sure we account for overflow during masking or shifting
   localparam int SPECULATIVE_CARRY_WRDS = 2;
-  
+
   // This is how much slack we allow before equalizing values
-  localparam int BOUNDARY_THRESHOLD = NUM_WRDS;
+  localparam int BOUNDARY_THRESHOLD = 2;//NUM_WRDS;
 
   // Parameters used by msu interface
   localparam int T_LEN = 64;
@@ -70,7 +70,7 @@ package redun_mont_pkg;
     for (int i = 0; i < NUM_WRDS; i++)
       from_redun += in[i] << (i*WRD_BITS);
   endfunction
-  
+
   function fe1_t from_redun1(input redun1_t in);
     from_redun1 = 0;
     for (int i = 0; i < NUM_WRDS*2; i++)

@@ -36,6 +36,7 @@ module multi_mode_multiplier #(
   parameter int NUM_ELEMENTS_OUT = NUM_ELEMENTS*2
 )(
   input                          i_clk,
+  input                          i_rst,
   input        [2:0]             i_ctl,
   input        [DSP_BIT_LEN-1:0] i_dat_a[NUM_ELEMENTS],
   input        [DSP_BIT_LEN-1:0] i_dat_b[NUM_ELEMENTS],
@@ -210,8 +211,12 @@ always_comb
   end
 
 // Output is registered
-always_ff @ (posedge i_clk)
-  for (int i = 0; i < NUM_ELEMENTS*2; i++) 
-    o_dat[i] <= res_int[i];
+always_ff @ (posedge i_clk or posedge i_rst)
+  if (i_rst)
+    for (int i = 0; i < NUM_ELEMENTS*2; i++)
+      o_dat[i] <= 0;
+  else
+    for (int i = 0; i < NUM_ELEMENTS*2; i++)
+      o_dat[i] <= res_int[i];
 
 endmodule
