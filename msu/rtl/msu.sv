@@ -200,13 +200,14 @@ module msu
     redun0_t sq_in_int, sq_out_int;
 
     redun_wrapper redun_wrapper (
-      .i_clk    ( clk     ),
-      .i_reset  ( reset || reset_1d || state == STATE_PREPARE_SEND || state == STATE_INIT ),
-      .i_sq_in  ( sq_in_int ),
-      .i_start  ( sq_start  ),
-      .o_sq_out ( sq_out_int ),
-      .o_valid  ( sq_finished ),
-      .o_locked ( locked      )
+      .i_clk        ( clk      ),
+      .i_reset      ( reset_1d ),
+      .i_reset_mont ( state == STATE_PREPARE_SEND || state == STATE_INIT ), // Before operating we hold circuit in reset
+      .i_sq_in      ( sq_in_int ),
+      .i_start      ( sq_start  ),
+      .o_sq_out     ( sq_out_int ),
+      .o_valid      ( sq_finished ),
+      .o_locked     ( locked      )
     );
 
     // Convert our data type
