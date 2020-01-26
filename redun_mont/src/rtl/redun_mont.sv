@@ -40,9 +40,9 @@ module redun_mont
 );
 
 redun0_t mul_a, mul_b;
-redun0_t hmul_out_h, tmp_h, tmp_h_p1, tmp_h_r;
+redun0_t hmul_out_h, hmul_out_h_r, tmp_h, tmp_h_p1, tmp_h_r;
 (* dont_touch = "true" *) redun0_t i_sq_r, i_sq_r_a, i_sq_r_b;
-redun1_t mult_out, mult_out_equalized, mult_out_equalized_r, mult_out_equalized_rr;
+redun1_t mult_out, mult_out_r, mult_out_equalized, mult_out_equalized_r, mult_out_equalized_rr;
 fe_t mult_out_h_equalized, mult_out_h_equalized_r, mult_out_h_equalized_rr, mult_out_h_equalized_rrr;
 logic [(NUM_WRDS+1)*WRD_BITS-1:0] mult_out_l_equalized;
 
@@ -74,6 +74,7 @@ always_comb begin
   for (int i = 0; i < NUM_WRDS; i++) begin
     tmp_h_p1[i] = tmp_h[i] + (i == 0 && mult_ctl == MUL_H ? 1 : 0);
     hmul_out_h[i] = mult_out[NUM_WRDS-1-i];
+    hmul_out_h_r[i] = mult_out_r[NUM_WRDS-1-i];
   end
 
   next_state = IDLE;
@@ -189,19 +190,20 @@ always_comb begin
   mul0_bndry = (state == MUL0) ? mult_out[NUM_WRDS-1][WRD_BITS:0] : 0;
   mul1_bndry = (state == MUL1) ? mult_out[NUM_WRDS-1][WRD_BITS:0] : 0;
   mul2_bndry = (state == MUL2) ? mult_out[NUM_WRDS][WRD_BITS:0] : 0;
+  
+  mult_out_equalized = equalize(mult_out_r);
+  mult_out_h_equalized = from_redun(hmul_out_h_r);
+  mult_out_l_equalized = mul2_carry ? from_redun(mult_out_r[0:NUM_WRDS-1]) : 0;
 end
 
 // Logic without a reset
 always_ff @ (posedge i_clk) begin
-  mult_out_equalized <= equalize(mult_out);
-  mult_out_h_equalized <= from_redun(hmul_out_h);
+  mult_out_r <= mult_out;
   mult_out_h_equalized_r <= mult_out_h_equalized;
   mult_out_h_equalized_rr <= mult_out_h_equalized_r;
   mult_out_h_equalized_rrr <= mult_out_h_equalized_rr;
   mult_out_equalized_r <= mult_out_equalized;
   mult_out_equalized_rr <= mult_out_equalized_r;
-
-  mult_out_l_equalized <= mul2_carry ? from_redun(mult_out[0:NUM_WRDS-1]) : 0;
 
   mult_ctl <= next_mult_ctl;
 
