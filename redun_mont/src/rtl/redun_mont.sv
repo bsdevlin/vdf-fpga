@@ -43,23 +43,19 @@ module redun_mont
   output logic    o_val
 );
 
-redun0_t mul_a, mul_b, mul_o;
-redun0_t hmul_out_h, hmul_out_h_r, hmul_out_h_rr, tmp_h;
+redun0_t mul_a, mul_b;
+redun0_t hmul_out_h, tmp_h, tmp_h_p1, tmp_h_r;
 redun0_t i_sq_r, i_sq_r_a, i_sq_r_b;
-redun0_t mult_out_l, mult_out_l_r, mult_out_l_rr, mult_out_l_rrr;
-redun1_t mult_out;
+redun1_t mult_out, mult_out_equalized, mult_out_equalized_r, mult_out_equalized_rr;
+fe_t mult_out_h_equalized, mult_out_h_equalized_r, mult_out_h_equalized_rr, mult_out_h_equalized_rrr;
+logic [(NUM_WRDS+1)*WRD_BITS-1:0] mult_out_l_equalized;
 
-// This version of output has the carry propigated over 3 cycles
-redun0_t mult_out_c0, mult_out_c1, mult_out_c2;
-logic [(NUM_WRDS+1)*WRD_BITS-1:0] mul_out_collapsed, mul_out_collapsed_r;
-logic [(NUM_WRDS+1)*WRD_BITS-1:0] mult_out_l_collapsed;
+logic [2:0] o_val_d;
+logic i_val_r;
 
+logic mul0_equalize, mul1_equalize, mul2_equalize, mul2_carry;
+logic [WRD_BITS:0] mul0_bndry, mul1_bndry, mul2_bndry;
 
-logic o_val_r, i_val_r, o_val_rr;
-logic [7:0] o_val_d;
-
-logic mul2_ovrflw;
-logic [WRD_BITS-1:0] mul2_ovrflw_dat;
 
 typedef enum logic [4:0] {IDLE  = 1 << 0,
                           START = 1 << 1,
@@ -77,10 +73,11 @@ logic [3:0] mul_in_sel;
 
 // Assign input to multiplier
 always_comb begin
-  for (int i = 0; i < NUM_WRDS; i++)
-    hmul_out_h[i] = mult_out[NUM_WRDS-1-i];
 
-  mult_out_l = mult_out[0:NUM_WRDS-1];
+  for (int i = 0; i < NUM_WRDS; i++) begin
+    tmp_h_p1[i] = tmp_h[i] + (i == 0 && mult_ctl == MUL_H ? 1 : 0);
+    hmul_out_h[i] = mult_out[NUM_WRDS-1-i];
+  end
 
   next_state = IDLE;
   next_mult_ctl = SQR;
@@ -94,37 +91,45 @@ always_comb begin
         next_state = IDLE;
     end
     START: begin
-      if (mul2_ovrflw) begin
-        if (o_val_d[6]) begin
-          next_mult_ctl = SQR;
-          next_state = START;
-        end else begin
-          next_mult_ctl = MUL_L;
-          next_state = START;
-        end
+      if (mul2_carry) begin
+        next_mult_ctl = SQR;
+        next_state = START;
       end else begin
         next_mult_ctl = MUL_L;
         next_state = MUL0;
       end
     end
     MUL0: begin
-      next_mult_ctl = MUL_H;
-      next_state = MUL1;
+      if (mul2_equalize) begin
+        next_mult_ctl = MUL_L;
+        next_state = MUL2;
+      end else begin
+        next_mult_ctl = MUL_H;
+        next_state = MUL1;
+      end
     end
     MUL1: begin
-      next_mult_ctl = SQR;
-      next_state = MUL2;
+      if (mul0_equalize) begin
+        next_mult_ctl = MUL_L;
+        next_state = MUL0;
+      end else begin
+        next_mult_ctl = SQR;
+        next_state = MUL2;
+      end
     end
     MUL2: begin
-      next_mult_ctl = MUL_L;
-      next_state = MUL0;
+      if (mul1_equalize) begin
+        next_mult_ctl = MUL_H;
+        next_state = MUL1;
+      end else if (mul2_equalize) begin
+        next_mult_ctl = SQR;
+        next_state = START;      
+      end else begin
+        next_mult_ctl = MUL_L;
+        next_state = MUL0;
+      end
     end
   endcase
-
-  // Overflow overrides previous state
-  if (mul2_ovrflw) begin
-    next_state = START;
-  end
 end
 
 // Logic for selecting where inputs for the multiplier come from
@@ -135,20 +140,28 @@ always_ff @ (posedge i_clk) begin
       mul_in_sel[0] <= 1;
     end
     START: begin
-      if (mul2_ovrflw) begin
+      if (mul2_carry)
         mul_in_sel[0] <= 1;
-      end else begin
+      else
         mul_in_sel[1] <= 1;
-      end
     end
     MUL0: begin
-      mul_in_sel[2] <= 1;
+      if (mul2_equalize)
+        mul_in_sel[0] <= 1;
+      else
+        mul_in_sel[2] <= 1;
     end
     MUL1: begin
-      mul_in_sel[3] <= 1;
+      if (mul0_equalize)
+        mul_in_sel[0] <= 1;
+      else    
+        mul_in_sel[3] <= 1;
     end
     MUL2: begin
-      mul_in_sel[1] <= 1;
+      if (mul1_equalize)
+        mul_in_sel[0] <= 1;
+      else
+        mul_in_sel[1] <= 1;
     end
   endcase
 end
@@ -160,12 +173,11 @@ always_comb begin
       mul_b = i_sq_r_b;
     end
     mul_in_sel[1]: begin
-      mul_a = mult_out_l;
+      mul_a = mult_out[0:NUM_WRDS-1];
       mul_b = to_redun(MONT_FACTOR);
     end
     mul_in_sel[2]: begin
-      mul_a = mult_out_l;
-      mul_a[NUM_WRDS-1][WRD_BITS] = 0;
+      mul_a = mult_out[0:NUM_WRDS-1];
       mul_b = to_redun(P);
     end
     mul_in_sel[3]: begin
@@ -175,106 +187,125 @@ always_comb begin
   endcase
 end
 
-// Logic for propigating carry in case of overflow
+// Boundary cases for when we need to equilize the result
 always_comb begin
-  mul_out_collapsed = 0;
-  for (int i = 0; i < NUM_WRDS; i++)
-    mul_out_collapsed += (mult_out_c1[i] << (i*WRD_BITS));
-
-  mult_out_l_collapsed = 0;
-  for (int i = 0; i < NUM_WRDS; i++)
-    mult_out_l_collapsed += (mult_out_l[i] << (i*WRD_BITS));
+  mul0_bndry = (state == MUL0) ? mult_out[NUM_WRDS-1][WRD_BITS:0] : 0;
+  mul1_bndry = (state == MUL1) ? mult_out[NUM_WRDS-1][WRD_BITS:0] : 0;
+  mul2_bndry = (state == MUL2) ? mult_out[NUM_WRDS][WRD_BITS:0] : 0;
 end
 
 // Logic without a reset
 always_ff @ (posedge i_clk) begin
+  mult_out_equalized <= equalize(mult_out);
+  mult_out_h_equalized <= from_redun(hmul_out_h);
+  mult_out_h_equalized_r <= mult_out_h_equalized;
+  mult_out_h_equalized_rr <= mult_out_h_equalized_r;
+  mult_out_h_equalized_rrr <= mult_out_h_equalized_rr;
+  mult_out_equalized_r <= mult_out_equalized;
+  mult_out_equalized_rr <= mult_out_equalized_r;
+  
+  mult_out_l_equalized <= mul2_carry ? from_redun(mult_out[0:NUM_WRDS-1]) : 0;
+  
   mult_ctl <= next_mult_ctl;
-
-  mult_out_l_r <= mult_out_l;
-  mult_out_l_r[NUM_WRDS-1][WRD_BITS] <= 0;
-
-  mult_out_l_rr <= mult_out_l_r;
-  mult_out_l_rrr <= mul2_ovrflw ? mult_out_l_rrr : mult_out_l_rr;
-
-  mult_out_c0 <= mult_out_l;
-  mult_out_c0[NUM_WRDS-1][WRD_BITS] <= 0;
-  mult_out_c1 <=  mult_out_c0;
-  mult_out_c2 <= mult_out_c1;
-
-  mul_out_collapsed_r <= mul_out_collapsed;
-
   state_r <= state;
-
-  hmul_out_h_r <= hmul_out_h;
-  hmul_out_h_rr <= hmul_out_h_r;
-  mul_o <= hmul_out_h_r;
+  
+  i_sq_r_a <= i_sq_r_a;
+  i_sq_r_b <= i_sq_r_b;
+  
+  for (int i = 0; i < NUM_WRDS; i++) begin
+    o_mul[i] <= mult_out_h_equalized_rrr[i*WRD_BITS +: WRD_BITS] + (i == 0 ? mult_out_l_equalized[DAT_BITS +: WRD_BITS] : 0);
+    if (mul2_carry) begin
+      i_sq_r_a[i] <= mult_out_h_equalized_rrr[i*WRD_BITS +: WRD_BITS] + (i == 0 ? mult_out_l_equalized[DAT_BITS +: WRD_BITS] : 0);
+      i_sq_r_b[i] <= mult_out_h_equalized_rrr[i*WRD_BITS +: WRD_BITS] + (i == 0 ? mult_out_l_equalized[DAT_BITS +: WRD_BITS] : 0);
+    end
+  end
+    
+  tmp_h_r <= tmp_h;
 
   // Register input
   i_sq_r <= i_sq;
+  i_val_r <= i_val;
+ 
+  
   if (state == IDLE) begin
     i_sq_r_a <= i_sq_r;
     i_sq_r_b <= i_sq_r;
+  end
+  
+  tmp_h <= to_redun(0);
+  
+  if (o_val) begin
+    i_sq_r_a <= o_mul;
+    i_sq_r_b <= o_mul;
+  end
+  
+  if (mul0_equalize) begin
+    if (state_r == MUL0) begin
+      i_sq_r_a <= mult_out_equalized[0:NUM_WRDS-1];
+      i_sq_r_b <= to_redun(MONT_FACTOR);
+    end
+    if (state_r == MUL1)
+      tmp_h <= mult_out_equalized_r[NUM_WRDS:2*NUM_WRDS-1];
   end else begin
-    i_sq_r_a <= mul_o;
-    i_sq_r_b <= mul_o;
+    if (state == MUL0)
+      tmp_h <= mult_out[NUM_WRDS:2*NUM_WRDS-1];
   end
-
-  if (state == MUL0)
-    for (int i = 0; i < NUM_WRDS; i++)
-      tmp_h[i] <= mult_out[NUM_WRDS+i] + (i == 0 ? (mult_out_l_collapsed[NUM_WRDS*WRD_BITS +: WRD_BITS] + 1) : 0);
-  else
-    tmp_h <= to_redun(0);
-
-  i_val_r <= i_val;
-
-  if (mul2_ovrflw) begin
-    i_sq_r_a <= mult_out_l_rrr;
+  
+  if (state == MUL2) begin
+    i_sq_r_a <= mult_out_equalized[0:NUM_WRDS-1];
     i_sq_r_b <= to_redun(P);
-
-    // Need to add in overflow result, also can propigate carry one level here
-    for (int i = 0; i < NUM_WRDS; i++)
-      mul_o[i] <= mul_o[i][WRD_BITS-1:0] + (i == 0 ? mul_out_collapsed_r[NUM_WRDS*WRD_BITS +: WRD_BITS] : mul_o[i-1][WRD_BITS]);
-
   end
-
-  if (o_val_d[6]) begin
-    i_sq_r_a <= mul_o;
-    i_sq_r_b <= mul_o;
+  
+  if (mul1_equalize) begin
+    tmp_h <= tmp_h_r;
+    if (state_r == MUL1) begin // We do this because we might need to hold the inputs in case of overflow
+      i_sq_r_a <= mult_out_equalized[0:NUM_WRDS-1];
+      i_sq_r_b <= to_redun(P);
+    end
   end
+  
+  if (mul2_equalize) begin
+    tmp_h <= to_redun(0);
+  end 
 
-  o_mul <= mul_o;
 end
 
 // Logic requiring reset
 always_ff @ (posedge i_clk) begin
   if (i_rst) begin
     state <= IDLE;
-    o_val_r <= 0;
-    o_val_rr <= 0;
-    o_val <= 0;
     o_val_d <= 0;
-    mul2_ovrflw <= 0;
-    mul2_ovrflw_dat <= 0;
+    mul0_equalize <= 0;
+    mul1_equalize <= 0;
+    mul2_equalize <= 0;  
+    mul2_carry <= 0;
+    o_val <= 0;
   end else begin
-    o_val_r <= state == MUL2;
-    o_val_rr <= o_val_r;
-    o_val <= (o_val_rr && ~mul2_ovrflw) || o_val_d[6];
-    o_val_d <= {o_val_d, o_val_rr && mul2_ovrflw};
+  
+    o_val <= o_val_d[2];
+  
+    if (mul2_equalize) mul2_carry <= 1;
+    if (o_val_d[2]) mul2_carry <= 0;
 
-    mul2_ovrflw_dat <= state_r == MUL1 ? mult_out[NUM_WRDS][WRD_BITS-1:0] : {WRD_BITS{1'd0}};
-
-    // We check for a condition we we might have overflow in the multiplier in the lower words,
-    // so we actually need to reverse the multiplication and we do it to check
-    if ((mul2_ovrflw_dat >= ((1 << WRD_BITS)-NUM_WRDS)) && state_r == MUL2) begin
-      mul2_ovrflw <= 1;
-    end
-
-    if (state == IDLE || o_val_d[6]) begin
-      mul2_ovrflw_dat <= 0;
-      mul2_ovrflw <= 0;
-    end
-
+    if ((state_r == MUL2 && ~mul2_carry) || (mul2_equalize && state_r == MUL2))
+      o_val_d <= 1;
+    else
+      o_val_d <= o_val_d << 1;
+      
     state <= next_state;
+    
+    // Make sure we don't equalize while other stages are doing so, detect the worst case overflow condition
+    if ((mul0_bndry >= (1 << WRD_BITS) - BOUNDARY_THRESHOLD) && ~(mul0_equalize || mul1_equalize || mul2_equalize || mul2_carry))
+      mul0_equalize <= 1;
+    if ((mul1_bndry >= (1 << WRD_BITS) - BOUNDARY_THRESHOLD) && ~(mul0_equalize || mul1_equalize || mul2_equalize || mul2_carry))
+      mul1_equalize <= 1;
+    if ((mul2_bndry >= (1 << WRD_BITS) - BOUNDARY_THRESHOLD) && ~(mul0_equalize || mul1_equalize || mul2_equalize || mul2_carry))
+      mul2_equalize <= 1;
+    
+    if (state_r == MUL1) mul0_equalize <= 0;
+    if (state_r == MUL2) mul1_equalize <= 0;
+    if (state_r == MUL0) mul2_equalize <= 0;
+
   end
 end
 
@@ -289,7 +320,7 @@ multi_mode_multiplier (
   .i_ctl      ( mult_ctl ),
   .i_dat_a    ( mul_a    ),
   .i_dat_b    ( mul_b    ),
-  .i_add_term ( tmp_h    ),
+  .i_add_term ( tmp_h_p1 ),
   .o_dat      ( mult_out )
 );
 

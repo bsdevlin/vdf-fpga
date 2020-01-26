@@ -22,7 +22,7 @@ import redun_mont_pkg::*;
 
 localparam int            CLK_PERIOD = 8000;  // Reference clock is 125MHz
 localparam [T_LEN-1:0]    START_CNT = 0;
-localparam [T_LEN-1:0]    END_CNT = 100;
+localparam [T_LEN-1:0]    END_CNT = 1000;
 localparam [DAT_BITS-1:0] INIT_VALUE = 'h0851698569993e83a65eb9c589d31d57613b9e0d304af253e72a25fb62d56a81322aa13a270c77f95a51d16e8e209a0277038ce55ddae57fbe0cec83f5be0b04d09c764c8f3c413cfd57c8a5d299c5cc82fd6dfdbd477a87715a0d413f32420fc7b34411325e1217a71096848fde90ec745558c7335696741d41c91186caf806b;
 localparam AXI_LEN = 32;
 

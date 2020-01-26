@@ -35,6 +35,9 @@ package redun_mont_pkg;
 
   // These are needed to make sure we account for overflow during masking or shifting
   localparam int SPECULATIVE_CARRY_WRDS = 2;
+  
+  // This is how much slack we allow before equalizing values
+  localparam int BOUNDARY_THRESHOLD = NUM_WRDS;
 
   // Parameters used by msu interface
   localparam int T_LEN = 64;
@@ -62,18 +65,28 @@ package redun_mont_pkg;
       to_redun1[i] = in[i*WRD_BITS +: WRD_BITS];
   endfunction
 
-  function fe_t from_redun(input redun0_t in);
+  function fe1_t from_redun(input redun0_t in);
     from_redun = 0;
     for (int i = 0; i < NUM_WRDS; i++)
       from_redun += in[i] << (i*WRD_BITS);
   endfunction
+  
+  function fe1_t from_redun1(input redun1_t in);
+    from_redun1 = 0;
+    for (int i = 0; i < NUM_WRDS*2; i++)
+      from_redun1 += in[i] << (i*WRD_BITS);
+  endfunction
 
-  function check_overflow(input redun0_t in);
-    logic [DAT_BITS:0] res;
+  // This function is used to correct for carries in the case
+  // we detect we might overflow the half way boundary
+  parameter BOUNDARY = NUM_WRDS;
+  function redun1_t equalize(input redun1_t in);
+    fe1_t res;
     res = 0;
-    for (int i = 0; i < NUM_WRDS; i++)
+    for (int i = 0; i < BOUNDARY; i++)
       res += in[i] << (i*WRD_BITS);
-    check_overflow = res[DAT_BITS];
+    for (int i = 0; i < NUM_WRDS*2; i++)
+      equalize[i] = (i < BOUNDARY) ? res[i*WRD_BITS +: WRD_BITS] : (i == BOUNDARY) ? in[i] + res[BOUNDARY*WRD_BITS +: BOUNDARY] : in[i];
   endfunction
 
   // Montgomery multiplication
@@ -107,7 +120,6 @@ package redun_mont_pkg;
   endfunction
 
   // Functions to calculate Montgomery parameters
-
   function fe_t fe_sub(fe_t a, b);
     logic [$bits(fe_t):0] a_, b_;
     a_ = a;

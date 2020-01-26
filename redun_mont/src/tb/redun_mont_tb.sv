@@ -27,11 +27,6 @@ logic in_val, out_val;
 logic [T_LEN-1:0] out_cnt;
 
 initial begin
-  rst = 1;
-  #(20*CLK_PERIOD) rst = ~rst;
-end
-
-initial begin
   clk = 0;
   forever #CLK_PERIOD clk = ~clk;
 end
@@ -51,36 +46,23 @@ always_ff @ (posedge clk)
   else
     if (out_val) out_cnt <= out_cnt + 1;
 
-initial begin
-  fe_t a, a_, res, exp;
+task run_test(fe_t a);
+  fe_t a_, res, exp;
   int unsigned seed;
   fe1_t chk;
   logic [T-1:0] i;
+
+  rst = 1;
   in_val = 0;
   i = 0;
   seed = 2;
   in = to_redun(0);
-
   @(posedge clk);
-  // Wait for reset pulse and then lock
-  while (rst != 1) @(posedge clk);
-  while (rst != 0) @(posedge clk);
-
-  repeat (20) @(posedge clk);
-  $srandom(seed);
-  a = 0;
-  for (int i = 0; i < DAT_BITS/32; i++)
-    a[i*32 +: 32] = $urandom();
-
-  a = a % P; // Our starting value
-  $display("Seed, 0x%0x, Starting value: 0x%0x", seed, a);
   
+  #(20*CLK_PERIOD) rst = ~rst;
+ 
+  $display("INFO: Test starting value: 0x%0x", a);
   a_ = to_mont(a);
-
-  // Some values known to check corner case bugs
-  //a_ = 'h169dc883e74b196ec8c19a022500b84d6702a2561f8fb9a5ef91c03321e5749d6f94f7422f9494f3062cad1b7e7cd26bf48c365e9d7b7ab71a6b398dc2b52c1c38f172c6b939f8f1f714f41f14f8ae81f15ed5518d246ab5146d2f1ae87fc0b7e55424c7a859f3bff40ecb87b9f04a0c95b7442fd860f429bf41b0fee3a4f5e1;
-  a_ = 'h4255b52b6d3d048cb3425e412445fac98f647499af4e8f921b4c9aaab9273cee859849311c1fad94b65bd1b999d5b0c7b2a7c81506e3950a24eb3bb8037abdcce6b97c4943c8d93f2e433ec85fd426cbc91c767285bf9c0d9697d93330c9ea970f5705bb91a401339d2c488401368181bdf20a54483a9070ad86306b44687cd0;
-  a = from_mont(a_);
   chk = a;
 
   @(negedge clk);
@@ -124,9 +106,21 @@ initial begin
   else
     $display("Result was correct");
 
+endtask
+
+initial begin
+
+  run_test(2);
+  
+  // Some values known to check corner case bugs
+  run_test('h64fcea92a9ee80885a03f54fc0c275161a5deffe76fa9d7c370e623045197c326b9ab9a47371e694d486d267d5bd7ac4b519f76328074d8aed64cfac7d09b736c6178234b79c0ca06dfb19f2c18bb487256fae7e763f9d73c2d2a5c258f7c7b912b61317fd6d0536251a26e2282adb9a3ca65174c58bc9ddb4392331c9e7f841);
+  run_test('ha9e18f842654910dd14236759d6f12bb494ace3b850ae6b65b74f5595be1eb724cca7f0c487cf9907c94fa815ce71fdfad3bf1cd9e668f1d5403ed486229606d0bfa87e6477f18b29b5eebdd8315b1159fb275da7c64d482db7fb66b446b70ed27f9be48091ded9102b0fa8333691a9fbbe22600010abd3133395aa5672162b0);
+  run_test('ha9f90c189cf48824b955a47270abf6e39c33bc62ef1226a8927f703f5d04cc86bf6b9c8c5558be2c292c2cbf370a4c064ec36a89712391a83b9497846f66205e7d0bfc4ace13a8a4f27f6a7b24100fa3f0dec33bf6fcc9bc9d45e881fb6610859ffab32225ce7d84d22ba37717e30febedd1452af285e0a914dfe70e9f2b89cb);
+  run_test('hc7bdd8f74509905ed01cbe4be486dee5baa6d954fd6cbe2e2348798672b650d01e0405955489f569a0360f239553f749bcd52604aceba480e0e766b4e9dd3344c626f5e555c3a76cefd6e0a557d34637707b79a30504696d5485087351f35e75f1e9dc5dbeec4d9343e71025396a676d70ef0b4ac28bd79145167981bc7cc66);
+
+  $display("INFO: ALL TESTS FINISHED...");
   repeat(2) @(posedge clk);
   $finish();
 end
-
 
 endmodule

@@ -211,14 +211,7 @@ always_comb
 
 // Output is registered
 always_ff @ (posedge i_clk)
-  for (int i = 0; i < NUM_ELEMENTS*2; i++) begin// Also check for bit overflow here if in mode 1
+  for (int i = 0; i < NUM_ELEMENTS*2; i++) 
     o_dat[i] <= res_int[i];
-    if (i_ctl[2]) begin
-      if (i == NUM_ELEMENTS-1)
-        o_dat[i] <= res_int[i] + res_int[NUM_ELEMENTS][WORD_LEN];
-      else if (i == NUM_ELEMENTS)
-        o_dat[i] <= res_int[i][WORD_LEN-1:0];
-    end
-  end
 
 endmodule

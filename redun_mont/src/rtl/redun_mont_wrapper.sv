@@ -35,7 +35,7 @@ logic [FIFO_RD_LTCY-1:0] fifo_in_val, fifo_out_val;
 logic clk_int;
 logic [4:0] locked;
 logic [4:0] locked_int;
-logic reset_int, reset_r;
+logic reset_int;
 
 always_comb begin
   o_valid = fifo_out_val[FIFO_RD_LTCY-1];
