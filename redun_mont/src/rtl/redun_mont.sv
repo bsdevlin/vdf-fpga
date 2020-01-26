@@ -41,7 +41,7 @@ module redun_mont
 
 redun0_t mul_a, mul_b;
 redun0_t hmul_out_h, tmp_h, tmp_h_p1, tmp_h_r;
-redun0_t i_sq_r, i_sq_r_a, i_sq_r_b;
+(* dont_touch = "true" *) redun0_t i_sq_r, i_sq_r_a, i_sq_r_b;
 redun1_t mult_out, mult_out_equalized, mult_out_equalized_r, mult_out_equalized_rr;
 fe_t mult_out_h_equalized, mult_out_h_equalized_r, mult_out_h_equalized_rr, mult_out_h_equalized_rrr;
 logic [(NUM_WRDS+1)*WRD_BITS-1:0] mult_out_l_equalized;

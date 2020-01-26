@@ -95,10 +95,7 @@ initial begin
   ap_start = 0;
   in_dat = {to_mont(INIT_VALUE), END_CNT, START_CNT};
  
-  @(posedge clk);
-  // Wait for reset to toggle
-  while (rst != 1) @(posedge clk);
-  while (rst != 0) @(posedge clk);
+  repeat(1000) @(posedge clk); // Make sure circuit is locked
 
   @(posedge clk);
   ap_start = 1;
