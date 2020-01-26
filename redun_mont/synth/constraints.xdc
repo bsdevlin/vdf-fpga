@@ -14,7 +14,7 @@ resize_pblock [get_pblocks SLR2] -add {CLOCKREGION_X0Y10:CLOCKREGION_X5Y14}
 
 
 set_property MAX_FANOUT 10 [get_cells redun_wrapper/redun_mont/mul_in_sel*]
-set_property MAX_FANOUT 10 [get_cells redun_wrapper/mult_ctl*]
+set_property MAX_FANOUT 10 [get_cells redun_wrapper/redun_mont/mult_ctl*]
 
 
 set_max_delay -from [get_cells redun_wrapper/reset_cdc0*] -to [get_cells redun_wrapper/reset_cdc1*] -datapath_only 8.0
