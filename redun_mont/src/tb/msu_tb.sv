@@ -1,5 +1,5 @@
-/*
-  Copyright (C) 2019  Benjamin Devlin
+/*******************************************************************************
+  Copyright 2019 Benjamin Devlin
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   See the License for the specific language governing permissions and
   limitations under the License.
-*/
+*******************************************************************************/
 `timescale 1ps/1ps
 
 module msu_tb ();
@@ -94,7 +94,7 @@ initial begin
   m_axis_if.rdy = 0;
   ap_start = 0;
   in_dat = {to_mont(INIT_VALUE), END_CNT, START_CNT};
- 
+
   repeat(1000) @(posedge clk); // Make sure circuit is locked
 
   @(posedge clk);

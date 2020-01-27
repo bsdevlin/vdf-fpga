@@ -1,5 +1,5 @@
-/*
-  Copyright (C) 2019  Benjamin Devlin
+/*******************************************************************************
+  Copyright 2019 Benjamin Devlin
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   See the License for the specific language governing permissions and
   limitations under the License.
-*/
+*******************************************************************************/
 `timescale 1ps/1ps
 
 module multi_mode_multiplier_tb ();
@@ -72,29 +72,26 @@ endfunction
 
 
 initial begin
-fe1_t a_, b_, exp;
+  fe1_t a_, b_, exp;
 
-a_ = 'h1ebfb4da2ba2fec8ff0ecf6cc26c30912fdfbe874e4e01ce9f0a8fd0c1fc65b3dbba01d0fc89934c014a9894fdcc180196239570c793de3835de00010e296e01f4794238becd56694cd1aa388d443cb10a8c79127f281a110329c4e5212be39ec1fa026db21b682c62b0c0cdeb36cdc203795323ca1f7992278ebfdb678ddabfb2cd;
-b_ = 'hb0ad4555c1ee34c8cb0577d7105a475171760330d577a0777ddcb955b302ad0803487d78ca267e8e9f5e3f46e35e10ca641a27e622b2d04bb09f3f5e3ad274b1744f34aeaf90fd45129a02a298dbc430f404f9988c862d10b58c91faba2aa2922f079229b0c8f88d86bfe6def7d026294ed9dee2504b5d30466f7b0488e2666b;
-add_term = to_redun(0);
+  a_ = 'h1ebfb4da2ba2fec8ff0ecf6cc26c30912fdfbe874e4e01ce9f0a8fd0c1fc65b3dbba01d0fc89934c014a9894fdcc180196239570c793de3835de00010e296e01f4794238becd56694cd1aa388d443cb10a8c79127f281a110329c4e5212be39ec1fa026db21b682c62b0c0cdeb36cdc203795323ca1f7992278ebfdb678ddabfb2cd;
+  b_ = 'hb0ad4555c1ee34c8cb0577d7105a475171760330d577a0777ddcb955b302ad0803487d78ca267e8e9f5e3f46e35e10ca641a27e622b2d04bb09f3f5e3ad274b1744f34aeaf90fd45129a02a298dbc430f404f9988c862d10b58c91faba2aa2922f079229b0c8f88d86bfe6def7d026294ed9dee2504b5d30466f7b0488e2666b;
+  add_term = to_redun(0);
 
-ina = to_redun(a_);
-inb = to_redun(b_);
+  ina = to_redun(a_);
+  inb = to_redun(b_);
 
-exp = a_*b_;
+  exp = a_*b_;
 
-ctl = 3'b010;
-$display("in_a 0x%x, in_b 0x%x", from_redun0(ina), from_redun0(inb));
-repeat(10) @(posedge clk);
-$display("R 0x%560x", from_redun1(out));
-$display("E 0x%560x", exp);
-if (exp != from_redun1(out)) 
-  $fatal(1, "ERROR: Wrong result");
-else
-  $display("INFO: Correct result");
-
-//output
-//0x15389c372e208a6d75980c92b5225a0066cf1608c4e59b847c4a30d8f46c3a4fa04d4f2c98ff573e8c3383484e8dd01a80fd90a9490e019102155b6bbe01fafab89c70c386962039cb71de265a3eb9966442fdb1ca9a44075242d0c8de54efa6efa11a3867f5661c07bdceafc0ba823d41b122b75b0ca8d467592ac955823cbf0033138087990c66c9d2fcc3c886a2ad7814cd7f8dc4f9850a475b20755ea5bbb602e27203a153a1ee219541338a610dcec262ae3c4e164fb8de0f5ea817ece5e162fb47ef4ca6ce86199353bf1b1573782c04baeb7994720220252f613c6a2431a91d2bef4862531a942d4f6d0bd90e89bc323df093024161947e320bdf905769af
+  ctl = 3'b010;
+  $display("in_a 0x%x, in_b 0x%x", from_redun0(ina), from_redun0(inb));
+  repeat(10) @(posedge clk);
+  $display("R 0x%560x", from_redun1(out));
+  $display("E 0x%560x", exp);
+  if (exp != from_redun1(out))
+    $fatal(1, "ERROR: Wrong result");
+  else
+    $display("INFO: Correct result");
 
   #1us $finish();
 end

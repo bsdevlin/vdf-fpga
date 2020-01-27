@@ -201,8 +201,8 @@ module msu
 
     redun_wrapper redun_wrapper (
       .i_clk        ( clk      ),
-      .i_reset      ( reset_1d ),
-      .i_reset_mont ( state == STATE_PREPARE_SEND || state == STATE_INIT ), // Before operating we hold circuit in reset
+      .i_reset      ( reset_1d ), // This is the reset for the FIFOs and the MMCM
+      .i_reset_mont ( state == STATE_PREPARE_SEND || state == STATE_INIT ), // Reset for the Montgomery circuit - before operating we hold circuit in reset
       .i_sq_in      ( sq_in_int ),
       .i_start      ( sq_start  ),
       .o_sq_out     ( sq_out_int ),

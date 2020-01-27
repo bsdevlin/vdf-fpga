@@ -62,7 +62,6 @@ end
 
 // Instantiate the multiplier array and input mux
 genvar gi, gj;
-
 generate
   for (gi = 0; gi < NUM_ELEMENTS; gi++) begin : GEN_MULA
     for (gj = 0; gj < NUM_ELEMENTS; gj++) begin : GEN_MULB
@@ -190,7 +189,7 @@ generate
         .o_s     ( res[gi] )
       );
 
-      end
+    end
 endgenerate
 
 // Propigate carry on the boundary depending on direction
@@ -232,7 +231,6 @@ always_ff @ (posedge i_clk or posedge i_rst)
                   else if (i == NUM_ELEMENTS)
                     o_dat[i] <= res_int[i][WORD_LEN-1:0];
       endcase
-    end  
-
+    end
 
 endmodule

@@ -1,5 +1,5 @@
-/*
-  Copyright (C) 2019  Benjamin Devlin
+/*******************************************************************************
+  Copyright 2019 Benjamin Devlin
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   See the License for the specific language governing permissions and
   limitations under the License.
- */
+*******************************************************************************/
 
 /*
  This performs repeated modular squaring using Montgomery multiplication technique.
@@ -40,7 +40,7 @@ module redun_mont
 );
 
 redun0_t mul_a, mul_b;
-redun0_t hmul_out_h, hmul_out_h_r, tmp_h, tmp_h_p1, tmp_h_r;
+redun0_t hmul_out_h, hmul_out_h_r, add_term, add_term_p1, add_term_r;
 redun0_t i_sq_r, i_sq_r_a, i_sq_r_b;
 redun1_t mult_out, mult_out_r, mult_out_equalized, mult_out_equalized_r, mult_out_equalized_rr;
 fe_t mult_out_h_equalized, mult_out_h_equalized_r, mult_out_h_equalized_rr, mult_out_h_equalized_rrr;
@@ -58,8 +58,7 @@ typedef enum logic [4:0] {IDLE  = 1 << 0,
                           MUL0  = 1 << 2,
                           MUL1  = 1 << 3,
                           MUL2  = 1 << 4} state_index_t;
-state_index_t state = IDLE;
-state_index_t next_state, state_r;
+state_index_t state, next_state, state_r;
 
 typedef enum logic [2:0] {SQR   = 1 << 0,
                           MUL_L = 1 << 1,
@@ -70,9 +69,8 @@ logic [3:0] mul_in_sel;
 
 // Assign input to multiplier
 always_comb begin
-
   for (int i = 0; i < NUM_WRDS; i++) begin
-    tmp_h_p1[i] = tmp_h[i] + (i == 0 && mult_ctl == MUL_H ? 1 : 0);
+    add_term_p1[i] = add_term[i] + (i == 0 && mult_ctl == MUL_H ? 1 : 0);
     hmul_out_h[i] = mult_out[NUM_WRDS-1-i];
     hmul_out_h_r[i] = mult_out_r[NUM_WRDS-1-i];
   end
@@ -190,7 +188,7 @@ always_comb begin
   mul0_bndry = (state == MUL0) ? mult_out[NUM_WRDS-1][WRD_BITS:0] : 0;
   mul1_bndry = (state == MUL1) ? mult_out[NUM_WRDS-1][WRD_BITS:0] : 0;
   mul2_bndry = (state == MUL2) ? mult_out[NUM_WRDS][WRD_BITS:0] : 0;
-  
+
   mult_out_equalized = equalize(mult_out_r);
   mult_out_h_equalized = from_redun(hmul_out_h_r);
   mult_out_l_equalized = mul2_carry ? from_redun(mult_out_r[0:NUM_WRDS-1]) : 0;
@@ -218,7 +216,7 @@ always_ff @ (posedge i_clk) begin
     end
   end
 
-  tmp_h_r <= tmp_h;
+  add_term_r <= add_term;
 
   // Register input
   i_sq_r <= i_sq;
@@ -228,7 +226,7 @@ always_ff @ (posedge i_clk) begin
     i_sq_r_b <= i_sq_r;
   end
 
-  tmp_h <= to_redun(0);
+  add_term <= to_redun(0);
 
   if (o_val) begin
     i_sq_r_a <= o_mul;
@@ -241,10 +239,10 @@ always_ff @ (posedge i_clk) begin
       i_sq_r_b <= to_redun(MONT_FACTOR);
     end
     if (state_r == MUL1)
-      tmp_h <= mult_out_equalized_r[NUM_WRDS:2*NUM_WRDS-1];
+      add_term <= mult_out_equalized_r[NUM_WRDS:2*NUM_WRDS-1];
   end else begin
     if (state == MUL0)
-      tmp_h <= mult_out[NUM_WRDS:2*NUM_WRDS-1];
+      add_term <= mult_out[NUM_WRDS:2*NUM_WRDS-1];
   end
 
   if (state == MUL2) begin
@@ -253,7 +251,7 @@ always_ff @ (posedge i_clk) begin
   end
 
   if (mul1_equalize) begin
-    tmp_h <= tmp_h_r;
+    add_term <= add_term_r;
     if (state_r == MUL1) begin // We do this because we might need to hold the inputs in case of overflow
       i_sq_r_a <= mult_out_equalized[0:NUM_WRDS-1];
       i_sq_r_b <= to_redun(P);
@@ -261,13 +259,12 @@ always_ff @ (posedge i_clk) begin
   end
 
   if (mul2_equalize) begin
-    tmp_h <= to_redun(0);
+    add_term <= to_redun(0);
   end
-
 end
 
-// Logic requiring reset - asynchronous in case we don't have a lock
-always_ff @ (posedge i_clk or posedge i_rst) begin
+// Logic requiring reset
+always_ff @ (posedge i_clk) begin
   if (i_rst) begin
     state <= IDLE;
     state_r <= IDLE;
@@ -305,7 +302,6 @@ always_ff @ (posedge i_clk or posedge i_rst) begin
     if (state_r == MUL1) mul0_equalize <= 0;
     if (state_r == MUL2) mul1_equalize <= 0;
     if (state_r == MUL0) mul2_equalize <= 0;
-
   end
 end
 
@@ -316,13 +312,13 @@ multi_mode_multiplier #(
   .NUM_ELEMENTS_OUT( NUM_WRDS+SPECULATIVE_CARRY_WRDS )
 )
 multi_mode_multiplier (
-  .i_clk      ( i_clk    ),
-  .i_rst      ( i_rst    ),
-  .i_ctl      ( mult_ctl ),
-  .i_dat_a    ( mul_a    ),
-  .i_dat_b    ( mul_b    ),
-  .i_add_term ( tmp_h_p1 ),
-  .o_dat      ( mult_out )
+  .i_clk      ( i_clk       ),
+  .i_rst      ( i_rst       ),
+  .i_ctl      ( mult_ctl    ),
+  .i_dat_a    ( mul_a       ),
+  .i_dat_b    ( mul_b       ),
+  .i_add_term ( add_term_p1 ),
+  .o_dat      ( mult_out    )
 );
 
 endmodule
