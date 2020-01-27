@@ -73,8 +73,8 @@ always_comb begin
 
   for (int i = 0; i < NUM_WRDS; i++) begin
     tmp_h_p1[i] = tmp_h[i] + (i == 0 && mult_ctl == MUL_H ? 1 : 0);
-    hmul_out_h[i] = mult_out[NUM_WRDS-1-i] + (i == 0 ? mult_out[NUM_WRDS][WRD_BITS] : 0);
-    hmul_out_h_r[i] = mult_out_r[NUM_WRDS-1-i] + (i == 0 ? mult_out_r[NUM_WRDS][WRD_BITS] : 0);
+    hmul_out_h[i] = mult_out[NUM_WRDS-1-i];
+    hmul_out_h_r[i] = mult_out_r[NUM_WRDS-1-i];
   end
 
   next_state = IDLE;
@@ -189,7 +189,7 @@ end
 always_comb begin
   mul0_bndry = (state == MUL0) ? mult_out[NUM_WRDS-1][WRD_BITS:0] : 0;
   mul1_bndry = (state == MUL1) ? mult_out[NUM_WRDS-1][WRD_BITS:0] : 0;
-  mul2_bndry = (state == MUL2) ? {1'd0, mult_out[NUM_WRDS][WRD_BITS-1:0]} : 0;
+  mul2_bndry = (state == MUL2) ? mult_out[NUM_WRDS][WRD_BITS:0] : 0;
   
   mult_out_equalized = equalize(mult_out_r);
   mult_out_h_equalized = from_redun(hmul_out_h_r);

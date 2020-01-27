@@ -210,13 +210,29 @@ always_comb
     endcase
   end
 
-// Output is registered
+// Output is registered, we propigate one level at the boundary to save cycles calculating overflow
 always_ff @ (posedge i_clk or posedge i_rst)
   if (i_rst)
     for (int i = 0; i < NUM_ELEMENTS*2; i++)
       o_dat[i] <= 0;
   else
-    for (int i = 0; i < NUM_ELEMENTS*2; i++)
+    for (int i = 0; i < NUM_ELEMENTS*2; i++) begin
       o_dat[i] <= res_int[i];
+      unique case (1'b1)
+        i_ctl[0]: if (i == NUM_ELEMENTS)
+                    o_dat[i] <= res_int[i] + res_int[NUM_ELEMENTS-1][WORD_LEN];
+                  else if (i == NUM_ELEMENTS-1)
+                    o_dat[i] <= res_int[i][WORD_LEN-1:0];
+        i_ctl[1]: if (i == NUM_ELEMENTS)
+                    o_dat[i] <= res_int[i] + res_int[NUM_ELEMENTS-1][WORD_LEN];
+                  else if (i == NUM_ELEMENTS-1)
+                    o_dat[i] <= res_int[i][WORD_LEN-1:0];
+        i_ctl[2]: if (i == NUM_ELEMENTS-1)
+                    o_dat[i] <= res_int[i] + res_int[NUM_ELEMENTS][WORD_LEN];
+                  else if (i == NUM_ELEMENTS)
+                    o_dat[i] <= res_int[i][WORD_LEN-1:0];
+      endcase
+    end  
+
 
 endmodule
