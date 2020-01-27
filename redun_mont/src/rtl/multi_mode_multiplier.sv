@@ -205,7 +205,7 @@ always_comb
         res_int[i] = res[i][WORD_LEN-1:0] + (i > 0 ? res[i-1][OUT_BIT_LEN-1:WORD_LEN] : 0);
       end
       i_ctl[2]: begin
-        res_int[i] = res[i][WORD_LEN-1:0] + (i < NUM_ELEMENTS_OUT-1 ? res[i+1][OUT_BIT_LEN-1:WORD_LEN] : 0);
+        res_int[i] = res[i][WORD_LEN-1:0] + (i < NUM_ELEMENTS*2-1 ? res[i+1][OUT_BIT_LEN-1:WORD_LEN] : 0);
       end
     endcase
   end
