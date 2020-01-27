@@ -25,8 +25,7 @@ module msu
 
     parameter int SQ_IN_BITS            = redun_mont_pkg::DAT_BITS,
     parameter int SQ_OUT_BITS           = redun_mont_pkg::TOT_BITS, // Output includes redundant bit
-    parameter int T_LEN                 = 64,
-    parameter bit ENB_DEADLOCK          = 0
+    parameter int T_LEN                 = 64
     )
    (
     input wire                          clk,
@@ -179,7 +178,9 @@ module msu
    end
 
    always @(posedge clk) begin
-      if(state == STATE_SQIN) begin
+      if (state == STATE_IDLE) begin
+         t_current <= redun_mont_pkg::BUILD_SEED;  // To let us get some build seed functionality
+      end else if(state == STATE_SQIN) begin
          t_current            <= axi_in[T_LEN-1:0];
          t_final              <= axi_in[2*T_LEN-1:T_LEN];
          sq_in                <= axi_in[AXI_IN_BITS-1:2*T_LEN];

@@ -28,3 +28,4 @@ Design documentation (below):
 - Clock crossing done in wrapper using per-word FIFOs
 - Conversion in and out of Montgomery form is done in the SW wrapper
 - Software model in Verilog is in the package file src/rtl/redun_mont_pkg.sv and Python version in scripts/mont.py
+- All files are in redun_mont/ directory

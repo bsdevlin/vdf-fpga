@@ -43,6 +43,9 @@ package redun_mont_pkg;
   localparam int T_LEN = 64;
   localparam int AXI_LEN = 32;
 
+  // Parameter that can be tuned to generate different build seeds
+  localparam [15:0] BUILD_SEED = 16'h1;
+
   typedef logic [WRD_BITS:0] redun0_t [NUM_WRDS];
   typedef logic [WRD_BITS:0] redun1_t [NUM_WRDS*2];
   typedef logic [WRD_BITS:0] redun2_t [NUM_WRDS+SPECULATIVE_CARRY_WRDS];
