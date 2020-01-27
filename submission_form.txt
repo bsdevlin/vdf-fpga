@@ -8,7 +8,7 @@ To submit your design:
 - email your final repo + commit to hello@vdfalliance.org
 
 Team name: Benjamin Devlin
-Expected result (avg ns/square): ~49ns/sq (3 clocks @ 60MHz)
+Expected result (avg ns/square): ~48ns/sq (3 clocks @ 63MHz)
 
 Design documentation (below):
 
