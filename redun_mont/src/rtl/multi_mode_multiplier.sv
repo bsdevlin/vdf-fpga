@@ -23,7 +23,7 @@
 
  i_add_term allows for an addition term to be added to the output products (needed for last stage)
 
- We calculate 2 words past the boundary so that any overflow can be captured when only multiplying
+ We calculate (NUM_ELEMENTS_OUT-NUM_ELEMENTS) words past the boundary so that any overflow can be detected when only multiplying
  lower or upper products.
 
  Use log3 adder trees to try minimize critical path.
@@ -88,14 +88,13 @@ generate
               mul_b = i_dat_b[gj];
             end
             i_ctl[2]: begin
-              // Multiply upper half
+              // Multiply upper half, input terms are swapped
               mul_a = i_dat_a[NUM_ELEMENTS-gi-1];
               mul_b = i_dat_b[NUM_ELEMENTS-gj-1];
             end
           endcase
         end
 
-        // Use this multiplier cell so we can restrict placement to SLR2
         async_mult #(
           .BITS(DSP_BIT_LEN)
         )
@@ -155,7 +154,7 @@ always_comb begin
   end
 end
 
-// Sum each column in the grid using log4 adders
+// Sum each column in the grid using log3 adders
 generate
   always_comb begin
     res[0] = grid[0][0] + add[0];
@@ -179,6 +178,7 @@ generate
     else
       always_comb terms = grid[gi][GRID_INDEX:(GRID_INDEX + CUR_ELEMENTS - 1)];
 
+      // Log 3 gave the best results
       adder_tree_log_n #(
         .NUM_ELEMENTS ( TOT_ELEMENTS ),
         .BIT_LEN      ( OUT_BIT_LEN  ),
@@ -209,8 +209,8 @@ always_comb
     endcase
   end
 
-// Output is registered, we propigate one level at the boundary to save cycles calculating overflow
-always_ff @ (posedge i_clk or posedge i_rst)
+// Output is registered, we propagate one level at the boundary to save cycles calculating overflow
+always_ff @ (posedge i_clk)
   if (i_rst)
     for (int i = 0; i < NUM_ELEMENTS*2; i++)
       o_dat[i] <= 0;

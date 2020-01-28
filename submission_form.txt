@@ -8,7 +8,7 @@ To submit your design:
 - email your final repo + commit to hello@vdfalliance.org
 
 Team name: Benjamin Devlin
-Expected result (avg ns/square): ~48ns/sq (3 clocks @ 63MHz)
+Expected result (avg ns/square): ~46ns/sq (3 clocks @ 65MHz)
 
 Design documentation (below):
 
@@ -26,6 +26,8 @@ Design documentation (below):
   - Calculates 2 additional words past the shift/mask boundary so that we can detect possible overflow and correct result
 - MMCM PLL to get desired clock frequency
 - Clock crossing done in wrapper using per-word FIFOs
-- Conversion in and out of Montgomery form is done in the SW wrapper
-- Software model in Verilog is in the package file src/rtl/redun_mont_pkg.sv and Python version in scripts/mont.py
-- All files are in redun_mont/ directory
+- Conversion in and out of Montgomery form is done in the SW wrapper in Squarer.hpp pack/unpack functions (inside timer)
+- Software model in System Verilog is in the package file src/rtl/redun_mont_pkg.sv and Python version in scripts/mont.py
+- All files are in /redun_mont/ directory
+  - Self checking testbenches in /tb/
+  - /synth/ folder was used when doing local builds to check timing
