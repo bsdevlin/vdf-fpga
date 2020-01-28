@@ -228,7 +228,7 @@ module msu
       if(final_iteration) begin
          axi_out_count                    <= 0;
          axi_out[T_LEN-1:0]               <= t_current;
-         axi_out[T_LEN+16-1:T_LEN]        <= redun_mont_pkg::BUILD_SEED; // So we can get different build results
+         axi_out[T_LEN+16-1:T_LEN]        <= t_current ^ redun_mont_pkg::BUILD_SEED; // So we can get different build results
          axi_out[AXI_OUT_BITS-1:T_LEN+16] <= sq_out;
       end else if(state == STATE_SEND && m_axis_tready) begin
          axi_out                          <= { {AXI_LEN{1'b0}}, axi_out[AXI_OUT_BITS-1:AXI_LEN] };
