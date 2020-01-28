@@ -27,6 +27,7 @@ Design documentation (below):
 - MMCM PLL to get desired clock frequency
 - Clock crossing done in wrapper using per-word FIFOs
 - Conversion in and out of Montgomery form is done in the SW wrapper in Squarer.hpp pack/unpack functions (inside timer)
+  - Added seed so that we can try different builds, 16 bits gets shifted out in unpack function
 - Software model in System Verilog is in the package file src/rtl/redun_mont_pkg.sv and Python version in scripts/mont.py
 - All files are in /redun_mont/ directory
   - Self checking testbenches in /tb/

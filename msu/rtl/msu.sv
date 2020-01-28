@@ -58,7 +58,7 @@ module msu
    // Incoming txn count: t_start, t_final, sq_in
    localparam int AXI_IN_COUNT      = ((T_LEN*2 + SQ_IN_BITS + AXI_LEN-1)/ AXI_LEN);
    // Outgoing txn count: t_current, sq_out
-   localparam int AXI_OUT_COUNT     = ((T_LEN + SQ_OUT_BITS + AXI_LEN-1)/ AXI_LEN);
+   localparam int AXI_OUT_COUNT     = ((16 + T_LEN + SQ_OUT_BITS + AXI_LEN-1)/ AXI_LEN);  // We also send the seed back
    localparam int AXI_BYTES_PER_TXN = AXI_LEN/8;
    localparam int AXI_IN_BITS       = AXI_IN_COUNT * AXI_LEN;
    localparam int AXI_OUT_BITS      = AXI_OUT_COUNT * AXI_LEN;
@@ -178,9 +178,7 @@ module msu
    end
 
    always @(posedge clk) begin
-      if (state == STATE_IDLE) begin
-         t_current <= redun_mont_pkg::BUILD_SEED;  // To let us get some build seed functionality
-      end else if(state == STATE_SQIN) begin
+      if(state == STATE_SQIN) begin
          t_current            <= axi_in[T_LEN-1:0];
          t_final              <= axi_in[2*T_LEN-1:T_LEN];
          sq_in                <= axi_in[AXI_IN_BITS-1:2*T_LEN];
@@ -228,14 +226,13 @@ module msu
    localparam int SQ_OUT_OFFSET = 2;
    always @(posedge clk) begin
       if(final_iteration) begin
-         axi_out_count                 <= 0;
-         axi_out[T_LEN-1:0]            <= t_current;
-         axi_out[AXI_OUT_BITS-1:T_LEN] <= sq_out;
+         axi_out_count                    <= 0;
+         axi_out[T_LEN-1:0]               <= t_current;
+         axi_out[T_LEN+16-1:T_LEN]        <= redun_mont_pkg::BUILD_SEED; // So we can get different build results
+         axi_out[AXI_OUT_BITS-1:T_LEN+16] <= sq_out;
       end else if(state == STATE_SEND && m_axis_tready) begin
-         axi_out                       <= { {AXI_LEN{1'b0}},
-                                            axi_out[AXI_OUT_BITS-1:AXI_LEN] };
-
-         axi_out_count               <= axi_out_count + 1;
+         axi_out                          <= { {AXI_LEN{1'b0}}, axi_out[AXI_OUT_BITS-1:AXI_LEN] };
+         axi_out_count                    <= axi_out_count + 1;
       end
    end
 

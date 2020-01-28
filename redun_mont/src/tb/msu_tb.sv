@@ -108,7 +108,8 @@ initial begin
 
   // Wait for result
   m_axis_if.get_stream(out_dat, out_len, 0);
-  out_dat = out_dat >> T_LEN;
+  out_dat = out_dat >> T_LEN; // Remove t_count
+  out_dat = out_dat >> 16; // Remove seed
 
   res = 0;
   for (int i = 0; i < NUM_WRDS; i++)

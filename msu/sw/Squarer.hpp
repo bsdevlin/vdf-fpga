@@ -167,6 +167,8 @@ public:
         *t_final = mpz_get_ui(msu_out);
         bn_shr(msu_out, T_LEN);
 
+        bn_shr(msu_out, 16); // We also send the seed so want to shift it out
+
         // Reduce the polynomial from redundant form
         reduce_polynomial(sq_out, msu_out, word_len, WRD_BITS+1);
 
