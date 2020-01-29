@@ -1,14 +1,5 @@
-VDF FPGA Competition Submission Form
-
-To submit your design:
-- submit an official team entry form
-- fill in the fields below
-- create your final commit with git signoff:
-    git commit -s -m "round 1 entry"
-- email your final repo + commit to hello@vdfalliance.org
-
 Team name: Benjamin Devlin
-Expected result (avg ns/square): ~44ns/sq (3 clocks @ 68MHz)
+Expected result (avg ns/square): ~46ns/sq (3 clocks @ 65MHz)
 
 Design documentation (below):
 
