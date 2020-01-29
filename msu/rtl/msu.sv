@@ -95,7 +95,7 @@ module msu
    logic [C_XFER_SIZE_WIDTH-1:0] axi_out_count;
    logic                         axi_in_shift;
 
-   logic locked;
+   logic ready;
 
    genvar                        gi;
 
@@ -190,7 +190,7 @@ module msu
 
    assign sq_start                  = state == STATE_START;
    assign s_axis_xfer_size_in_bytes = (AXI_IN_COUNT*AXI_BYTES_PER_TXN);
-   assign s_axis_tready             = (state == STATE_RECV) && locked;
+   assign s_axis_tready             = (state == STATE_RECV) && ready;
 
    //////////////////////////////////////////////////////////////////////
    // Modsqr function
@@ -202,11 +202,11 @@ module msu
       .i_clk        ( clk      ),
       .i_reset      ( reset_1d ), // This is the reset for the FIFOs and the MMCM
       .i_reset_mont ( state == STATE_PREPARE_SEND || state == STATE_INIT ), // Reset for the Montgomery circuit - before operating we hold circuit in reset
-      .i_sq_in      ( sq_in_int ),
-      .i_start      ( sq_start  ),
-      .o_sq_out     ( sq_out_int ),
+      .i_sq_in      ( sq_in_int   ),
+      .i_start      ( sq_start    ),
+      .o_sq_out     ( sq_out_int  ),
       .o_valid      ( sq_finished ),
-      .o_locked     ( locked      )
+      .o_ready      ( ready       )
     );
 
     // Convert our data type
