@@ -53,7 +53,10 @@ LDCLFLAGS += --xp "vivado_prop:run.impl_1.\
 LDCLFLAGS += --xp "vivado_prop:run.impl_1.\
                    {STEPS.PHYS_OPT_DESIGN.ARGS.DIRECTIVE}=\
                    {AlternateFlowWithRetiming}"
-
+LDCLFLAGS += --xp "vivado_prop:run.impl_1.\
+                   {STEPS.POST_ROUTE_PHYS_OPT_DESIGN.ARGS.IS_ENABLED}=\
+                   {1}"
+                   
 # Vivado 2018.3
 LDCLFLAGS += --xp "vivado_prop:run.impl_1.\
                    {STEPS.ROUTE_DESIGN.ARGS.DIRECTIVE}={AggressiveExplore}"
