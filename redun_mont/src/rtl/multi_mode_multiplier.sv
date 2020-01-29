@@ -210,7 +210,7 @@ always_comb
   end
 
 // Output is registered, we propagate one level at the boundary to save cycles calculating overflow
-always_ff @ (posedge i_clk)
+always_ff @ (posedge i_clk or posedge i_rst)
   if (i_rst)
     for (int i = 0; i < NUM_ELEMENTS*2; i++)
       o_dat[i] <= 0;

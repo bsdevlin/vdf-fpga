@@ -264,7 +264,7 @@ always_ff @ (posedge i_clk) begin
 end
 
 // Logic requiring reset
-always_ff @ (posedge i_clk) begin
+always_ff @ (posedge i_clk or posedge i_rst) begin
   if (i_rst) begin
     state <= IDLE;
     state_r <= IDLE;
