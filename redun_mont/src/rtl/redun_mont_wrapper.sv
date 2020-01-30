@@ -36,7 +36,7 @@ logic [FIFO_RD_LTCY-1:0] fifo_in_val, fifo_out_val;
 logic clk_int;
 logic locked, locked_d;
 logic [3:0] reset_cdc0;
-logic reset_cdc1;
+logic reset_cdc1, ready;
 
 logic [NUM_WRDS-1:0] async_fifo_in_wr_rst_busy, async_fifo_in_rd_rst_busy, async_fifo_out_wr_rst_busy, async_fifo_out_rd_rst_busy;
 
@@ -50,18 +50,20 @@ always_ff @ (posedge i_clk or posedge i_reset) begin
   if (i_reset) begin
     fifo_out_val <= 0;
     reset_cdc0 <= 1;
+    ready <= 0;
     o_ready <= 0;
     locked_d <= 0;
   end else begin
     locked_d <= locked;
     fifo_out_val <= {fifo_out_val, fifo_out_rd};
-    reset_cdc0 <= {reset_cdc0, (~o_ready || i_reset_mont)};
+    reset_cdc0 <= {reset_cdc0, (~ready || i_reset_mont)};
 
     // Only allow data flow after everything is locked and reset complete
-    o_ready <= locked_d && ~(|async_fifo_in_wr_rst_busy) &&
-                           ~(|async_fifo_in_rd_rst_busy) && 
+    ready <= locked_d && ~(|async_fifo_in_wr_rst_busy) &&
+                           ~(|async_fifo_in_rd_rst_busy) &&
                            ~(|async_fifo_out_wr_rst_busy) &&
                            ~(|async_fifo_out_rd_rst_busy);
+    o_ready <= ready;
   end
 end
 
