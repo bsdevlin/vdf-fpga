@@ -1,5 +1,5 @@
 Team name: Benjamin Devlin
-Expected result (avg ns/square): 49.2ns/sq (3 clocks @ 61MHz)
+Expected result (avg ns/square): 46ns/sq (3 clocks @ 65MHz)
 
 Design documentation (below):
 
